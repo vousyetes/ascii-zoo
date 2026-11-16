@@ -1,4 +1,4 @@
-# vousyetes : animaux ASCII
+# vousyetes : ascii zoo
 
 <p align="center"><img src="docs/hero.jpg" alt="Seahorses, rhinos, elephants, flamingos, axolotls and owls drawn in ASCII on a black grid" width="100%"></p>
 
