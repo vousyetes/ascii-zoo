@@ -41,15 +41,11 @@ interface Seahorse extends Creature {
   /** Lieu du brin d'algue (centre de la spirale, px). */
   ax: number;
   ay: number;
-  /** Temps écoulé depuis le clic (flash + bulles), -1 hors animation. */
-  pop: number;
-  /** Couleur du flash (index dans PALETTE). */
-  popHue: number;
 }
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 1.5,
+  density: 0.9,
   detail: 1.6,
   speed: 1,
   sway: 0,
@@ -62,14 +58,7 @@ const DEFAULTS = {
   finBeat: 1,
   curl: 1,
   hookRate: 1,
-  bubbles: 20,
 };
-
-// Durée du flash, pause avant la fuite, durée totale du tourbillon (secondes).
-const POP_FLASH = 1.6;
-const POP_WAIT = 0.6;
-const POP_END = 2.6;
-const FLASH_IDX = [0, 1, 4];
 
 /** Palette soleil, corail, rose, violet, cyan. */
 const PALETTE: RGB[] = [
@@ -81,8 +70,6 @@ const PALETTE: RGB[] = [
 ];
 const EYE: RGB = [10, 8, 16];
 const GLINT: RGB = [255, 252, 246];
-const BUBBLE_C: RGB = [150, 220, 255];
-const BUBBLE_W: RGB = [255, 255, 255];
 const WEED: RGB = [92, 200, 255];
 
 const NB = 8; // noeuds du corps
@@ -107,9 +94,6 @@ export const seahorse: Animal<Seahorse> = {
     ["Drift", [
       { key: "bob", label: "Bobbing", min: 0, max: 3, step: 0.05, hint: "Size of the bobbing and the ups and downs." },
       { key: "hookRate", label: "Hooking", min: 0, max: 3, step: 0.05, hint: "How often the tail grabs a strand of seaweed. 0: never." },
-    ]],
-    ["Click", [
-      { key: "bubbles", label: "Bubbles", min: 0, max: 40, step: 1, hint: "How many bubbles they blow when you click." },
     ]],
     ["Body", [
       { key: "finBeat", label: "Fin", min: 0.2, max: 3, step: 0.05, hint: "Speed of the dorsal fin." },
@@ -142,8 +126,6 @@ export const seahorse: Animal<Seahorse> = {
     curl: 0.5,
     ax: 0,
     ay: 0,
-    pop: -1,
-    popHue: 0,
   }),
 
   update(f, flock, dt) {
@@ -152,18 +134,6 @@ export const seahorse: Animal<Seahorse> = {
     f.phase += dt * (1 + 2 * f.flee);
     f.fin += dt * (22 + 30 * f.flee) * k.finBeat;
     f.flee = Math.max(0, f.flee - dt * 0.55);
-    if (f.pop >= 0) {
-      const was = f.pop;
-      f.pop = f.pop > POP_END ? -1 : f.pop + dt;
-      // Il se redresse et reste sur place, puis file vers le haut.
-      if (f.pop >= 0 && f.pop < POP_WAIT) {
-        f.vx *= Math.max(0, 1 - dt * 6);
-        f.vy *= Math.max(0, 1 - dt * 6);
-      } else if (was < POP_WAIT && f.pop >= POP_WAIT) {
-        f.vy -= 300 * f.depth;
-        f.flee = 1;
-      }
-    }
 
     // Accroche : de temps en temps, il s'arrête, la queue serre un brin.
     if (f.hook === 0 && f.flee === 0 && k.hookRate > 0 && t > f.hookAt && f.hookUntil <= f.hookAt) {
@@ -199,12 +169,11 @@ export const seahorse: Animal<Seahorse> = {
   startle(f, dx, dy, strength, flock) {
     // Fuite : un jet en s'éloignant, queue déroulée, nage rapide.
     f.flee = 1;
-    f.pop = 0;
-    f.popHue = FLASH_IDX[Math.floor(rand(0, FLASH_IDX.length))];
     f.hookUntil = 0;
     f.hookAt = flock.time + rand(6, 14);
     const boost = 330 * Math.max(0.4, strength) * f.depth;
-    f.vx += dx * boost * 0.5;
+    f.vx += dx * boost;
+    f.vy += dy * boost;
     f.face = dx >= 0 ? 1 : -1;
     f.startledUntil = flock.time + 1.2;
   },
@@ -217,18 +186,15 @@ export const seahorse: Animal<Seahorse> = {
 function drawSeahorse(f: Seahorse, pen: Pen, k: typeof DEFAULTS) {
   const H = f.span * f.size;
   const fc = f.face;
-  // Flash caméléon : couleur vive du clic qui reflue vers la teinte de l'individu.
-  const fl = f.pop >= 0 ? clamp(1 - f.pop / POP_FLASH, 0, 1) ** 0.7 : 0;
-  const col0 = fl > 0 ? mix(PALETTE[f.hue], PALETTE[f.popHue], fl) : PALETTE[f.hue];
-  const col1 = fl > 0 ? mix(PALETTE[f.hue2], PALETTE[f.popHue], fl) : PALETTE[f.hue2];
+  const col0 = PALETTE[f.hue];
+  const col1 = PALETTE[f.hue2];
   let col = col0;
   let light = mix(col0, [255, 255, 255], 0.4);
   let ringCol = mix(col0, [20, 10, 40], 0.6);
   const lightF = mix(col1, [255, 255, 255], 0.4);
   const ringF = mix(col1, [20, 10, 40], 0.6);
   const curl = clamp(f.curl * k.curl, 0, 1.5);
-  const up = f.pop >= 0 && f.pop < POP_WAIT + 0.4 ? 0.2 : 1; // redressé pendant le flash
-  const tilt = ((0.1 + 0.08 * f.flee) * Math.sin(f.phase * 0.9) * k.bob + f.flee * 0.25 * fc) * up;
+  const tilt = (0.1 + 0.08 * f.flee) * Math.sin(f.phase * 0.9) * k.bob + f.flee * 0.25 * fc;
   const pose: Pose = { x: f.x, y: f.y, heading: tilt, span: H, depth: f.depth, id: f.id };
   const out = pen.ink;
 
@@ -350,25 +316,6 @@ function drawSeahorse(f: Seahorse, pen: Pen, k: typeof DEFAULTS) {
   // Oeil : une cellule sombre avec un reflet, sur la tête.
   const eye = pen.toWorld(pose, (BU(0) + 0.03) * fc, BODY[0][1] - 0.006, base);
   pen.spot(eye.x, eye.y, "●", GLINT, EYE, f.depth);
-
-  // Tourbillon de bulles : spirale sans état, tout se déduit du temps depuis le clic.
-  if (f.pop >= 0) {
-    const n = Math.round(k.bubbles);
-    const life = 2.5;
-    const span = POP_END - life;
-    const HS = H * 0.45;
-    for (let i = 0; i < n; i++) {
-      const age = f.pop - 0.1 - (i / n) * span;
-      if (age < 0 || age > life) continue;
-      const g = age / life;
-      const a = hash3(f.id, i, 3) * TAU + age * 3.2 * (i % 2 ? 1 : -1);
-      const rad = HS * (0.15 + 1.5 * g) * (0.7 + 0.6 * hash3(f.id, i, 8));
-      const x = f.x + Math.cos(a) * rad;
-      const y = f.y - H * 0.25 - age * H * 0.55 + Math.sin(a) * rad * 0.35;
-      const glyph = g > 0.7 ? "°" : i % 3 ? "o" : "O";
-      pen.dot(x, y, glyph, i % 3 === 2 ? BUBBLE_W : BUBBLE_C, f.depth, clamp(pen.fogFor(f.depth) + g * g * 0.9, 0, 0.95));
-    }
-  }
 
   // Traînée discrète pendant la fuite.
   pen.shed(f.x, f.y, 0.01 * f.depth * (0.4 + 2 * f.flee));

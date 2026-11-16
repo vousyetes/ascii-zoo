@@ -50,7 +50,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
   fog: 0.3,
-  density: 1.3,
+  density: 0.9,
   speed: 1,
   spread: 0.1,
   sway: 0.05,

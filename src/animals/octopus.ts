@@ -32,7 +32,7 @@ export interface Octopus extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 1.2,
+  density: 0.9,
   detail: 1.6,
   speed: 1,
   sway: 0.04,

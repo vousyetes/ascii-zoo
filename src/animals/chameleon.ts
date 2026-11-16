@@ -30,6 +30,8 @@ interface Chameleon extends Creature {
   until: number;
   /** Inclinaison du corps suivant la pente de la branche. */
   tilt: number;
+  /** Temps passé bloqué derrière un voisin. */
+  stuck?: number;
   /** Teinte vive (index de STOPS) et sa force : 1 à la capture, retombe lentement. */
   tint: number;
   pulse: number;
@@ -85,7 +87,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
   fog: 0.2,
-  density: 1.5,
+  density: 0.8,
   farthest: 0.55,
   farBias: 1.2,
   sway: 0.02,
@@ -195,8 +197,8 @@ export const chameleon: Animal<Chameleon> = {
       { key: "tongue", label: "Tongue", min: 0.3, max: 3, step: 0.05, hint: "How fast the tongue snaps at a fly." },
     ]],
   ],
-  area: 62000,
-  scale: 1.1,
+  area: 90000,
+  scale: 1.35,
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
@@ -228,6 +230,26 @@ export const chameleon: Animal<Chameleon> = {
       if (c.moving && Math.random() < 0.3) c.flip = c.flip > 0 ? -1 : 1;
     }
     c.go += ((c.moving ? 1 : 0) - c.go) * Math.min(1, dt * 2.5);
+    // Pas de superposition : sur une même branche, un voisin devant bloque la marche, un voisin collé repousse doucement.
+    let blocked = false;
+    for (const o of flock.creatures) {
+      if (o === c || o.br !== c.br) continue;
+      const dx = o.x - c.x;
+      const gap = (c.span + o.span) * 0.62;
+      if (Math.abs(dx) < gap) {
+        c.x -= Math.sign(dx || 1) * (gap - Math.abs(dx)) * 0.08;
+        if (dx * c.flip > 0) blocked = true;
+      }
+    }
+    if (blocked) {
+      c.go += (0 - c.go) * Math.min(1, dt * 6);
+      // Bloqué un moment : il fait demi-tour au lieu d'attendre.
+      c.stuck = (c.stuck ?? 0) + dt;
+      if (c.stuck > 1.2) {
+        c.flip = c.flip > 0 ? -1 : 1;
+        c.stuck = 0;
+      }
+    } else c.stuck = 0;
     const sp = flock.cruise(c) * 0.9 * boost * c.go * k.speed;
     c.vx = c.flip * sp;
     c.x += c.vx * dt;

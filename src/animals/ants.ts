@@ -45,7 +45,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
   fog: 0,
-  density: 1,
+  density: 0.6,
   farthest: 1,
   farBias: 1,
   trail: 1,

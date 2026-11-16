@@ -182,9 +182,9 @@ const STARTLE_RADIUS = 240;
  */
 const REFERENCE_SIZE = 160;
 
-/** vousyetes : tout le monde un peu plus petit, discret en fond, avec un peu plus d'individus pour garder l'effet. */
-const SIZE_K = 0.72;
-const CROWD_K = 1.3;
+/** vousyetes : peu d'individus, assez grands pour que le détail se lise. */
+const SIZE_K = 0.95;
+const CROWD_K = 0.5;
 
 export class Flock<C extends Creature = Creature> {
   width = 0;

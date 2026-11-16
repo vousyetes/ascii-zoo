@@ -66,7 +66,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   fog: 0,
   size: 1.2,
-  density: 1.3,
+  density: 0.9,
   sway: 0,
   spread: 0,
   farthest: 0.35,

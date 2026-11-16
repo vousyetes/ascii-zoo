@@ -34,7 +34,7 @@ interface Koi extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   fog: 0.64,
-  density: 1.6,
+  density: 1.0,
   speed: 1.6,
   spread: 0,
   sway: 0,
