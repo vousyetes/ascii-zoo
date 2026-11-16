@@ -41,6 +41,10 @@ interface Seahorse extends Creature {
   /** Lieu du brin d'algue (centre de la spirale, px). */
   ax: number;
   ay: number;
+  /** Bulles du clic : instant du clic et point d'où elles partent (le dessin de l'hippocampe ne change pas). */
+  bubbleAt?: number;
+  bx?: number;
+  by?: number;
 }
 
 const DEFAULTS = {
@@ -176,10 +180,34 @@ export const seahorse: Animal<Seahorse> = {
     f.vy += dy * boost;
     f.face = dx >= 0 ? 1 : -1;
     f.startledUntil = flock.time + 1.2;
+    f.bubbleAt = flock.time;
+    f.bx = f.x;
+    f.by = f.y;
   },
 
   drawAll(flock, pen) {
     for (const f of flock.creatures) drawSeahorse(f, pen, flock.tuning as typeof DEFAULTS);
+    // Tourbillon de bulles après un clic : ~18 bulles par hippocampe, qui montent en spirale et s'éteignent (positions calculées, rien à stocker).
+    for (const f of flock.creatures) {
+      if (f.bubbleAt === undefined) continue;
+      const age = flock.time - f.bubbleAt;
+      if (age < 0 || age > 2.8) continue;
+      const bx = f.bx ?? f.x;
+      const by = f.by ?? f.y;
+      for (let i = 0; i < 18; i++) {
+        const t0 = i * 0.07;
+        const a = age - t0;
+        if (a < 0) continue;
+        const life = 1 - a / (2.8 - t0);
+        if (life <= 0) continue;
+        const ang = hash3(f.id, i, 1) * TAU + a * (2.2 + hash3(f.id, i, 2));
+        const rad = 8 + a * (16 + 10 * hash3(f.id, i, 3)) * (0.6 + f.depth);
+        const x = bx + Math.cos(ang) * rad;
+        const y = by - a * (38 + 30 * hash3(f.id, i, 4)) + Math.sin(ang) * rad * 0.3;
+        const g = life > 0.6 ? "O" : life > 0.3 ? "o" : "\u00b0";
+        pen.dot(x, y, g, life > 0.5 ? [225, 250, 255] : [150, 215, 255], 1);
+      }
+    }
   },
 };
 
