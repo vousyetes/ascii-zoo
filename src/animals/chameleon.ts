@@ -25,7 +25,7 @@ interface Chameleon extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.6,
+  detail: 2.2,
   fog: 0.2,
   density: 0.9,
   farthest: 0.55,
@@ -56,10 +56,14 @@ const WHITE = 255;
 
 /** Couleur de la peau au point w du corps (0 tête, > 0 vers la queue), flash compris. */
 function skin(c: Chameleon, time: number, k: typeof DEFAULTS, w: number): RGB {
-  const x = frac(c.phase + time * 0.07 * k.colorSpeed + w * k.wave * 1.6) * STOPS.length;
+  // Segments lisses : la teinte reste quasi constante sur une zone puis glisse vite vers la suivante.
+  const q = (c.phase + time * 0.07 * k.colorSpeed + w * k.wave * 1.6) * STOPS.length;
+  const qi = Math.floor(q);
+  const qf = Math.min(1, Math.max(0, (q - qi - 0.6) / 0.4));
+  const x = frac((qi + qf) / STOPS.length) * STOPS.length;
   const i = Math.floor(x);
   const f = x - i;
-  const s = f * f * (3 - 2 * f);
+  const s = f;
   const a = STOPS[i % STOPS.length];
   const b = STOPS[(i + 1) % STOPS.length];
   const fl = c.flash * c.flash;
@@ -86,8 +90,8 @@ export const chameleon: Animal<Chameleon> = {
       { key: "curl", label: "Spirale", min: 0, max: 2, step: 0.05, hint: "Amplitude avec laquelle la queue s'enroule et se déroule." },
     ]],
   ],
-  area: 150000,
-  scale: 2.2,
+  area: 380000,
+  scale: 3.4,
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
@@ -130,21 +134,21 @@ export const chameleon: Animal<Chameleon> = {
 
     // Queue : spirale qui se resserre et se desserre doucement.
     const tight = 1 + 0.2 * k.curl * Math.sin(time * 0.6 + c.phase * TAU);
-    const R = 0.115 * tight;
+    const R = 0.15 * tight;
     for (let i = 0; i <= TAIL_N; i++) {
       const s = i / TAIL_N;
       const a = s * TAU * 1.55;
       const r = R * (1 - 0.82 * s);
-      tx[i] = -0.3 + r * Math.cos(a);
-      ty[i] = 0.06 + r * Math.sin(a);
+      tx[i] = -0.34 + r * Math.cos(a);
+      ty[i] = 0.04 + r * Math.sin(a);
     }
 
     // Pattes : une seule levée à la fois. Celles de l'autre flanc, plus sombres, passent derrière.
     const LEGS = [
       [0.12, 0, 1],
       [-0.09, 1, 1],
-      [0.09, 2, 0.55],
-      [-0.12, 3, 0.55],
+      [0.09, 2, 0.75],
+      [-0.12, 3, 0.75],
     ];
     for (const [hu, i, dim] of LEGS) {
       const m = frac(c.gait / TAU + i * 0.25);
@@ -158,14 +162,17 @@ export const chameleon: Animal<Chameleon> = {
       const footY = 0.32 - 0.07 * lift;
       const [r, g, b] = skin(c, time, k, -hu);
       const lc: RGB = [r * dim, g * dim, b * dim];
-      pen.lineBody(pose, hu, hipY * f, kneeU, kneeY * f, lc);
-      pen.lineBody(pose, kneeU, kneeY * f, footU, footY * f, lc);
+      // Chaque segment est doublé (léger décalage) pour épaissir la patte.
+      for (const d of [-0.012, 0, 0.012]) {
+        pen.lineBody(pose, hu + d, hipY * f, kneeU + d, kneeY * f, lc);
+        pen.lineBody(pose, kneeU + d, kneeY * f, footU + d, footY * f, lc);
+      }
       // Pince : deux doigts opposés, un vers l'avant, un vers l'arrière.
-      pen.lineBody(pose, footU, footY * f, footU + 0.05, (footY + 0.02) * f, lc, "<");
-      pen.lineBody(pose, footU, footY * f, footU - 0.045, (footY + 0.02) * f, lc, ">");
+      pen.lineBody(pose, footU, footY * f, footU + 0.07, (footY + 0.03) * f, lc, "<");
+      pen.lineBody(pose, footU, footY * f, footU - 0.06, (footY + 0.03) * f, lc, ">");
     }
 
-    pen.shape(pose, 0.62, (u, v) => {
+    pen.shape(pose, 0.7, (u, v) => {
       const y = v * f;
       const inBody =
         inEllipse(u, y, 0, -0.01, 0.2, 0.13) ||
@@ -177,18 +184,19 @@ export const chameleon: Animal<Chameleon> = {
         inEllipse(u, y, 0.15, -0.16, 0.03, 0.04); // crête
       if (inBody) {
         // Orbite sombre autour de l'oeil conique.
-        if ((u - 0.27) ** 2 + (y + 0.06) ** 2 < 0.036 * 0.036) return ink(out, ...DARK, INK_DARK);
+        if ((u - 0.27) ** 2 + (y + 0.055) ** 2 < 0.045 * 0.045) return ink(out, ...DARK, INK_DARK);
         // Écailles sombres sur les joints : bandes régulières le long du corps.
         const band = frac(u / 0.06);
-        if (u < 0.2 && (band < 0.09 || (y < -0.15 && band < 0.5))) return ink(out, ...DARK, INK_DARK);
+        if (u < 0.2 && (band < 0.05 || (y < -0.15 && band < 0.3))) return ink(out, ...DARK, INK_DARK);
         const [r, g, b] = skin(c, time, k, -u);
-        return ink(out, r, g, b, INK_SHIMMER);
+        const bright = y > 0.07 ? 0.8 : 1; // ventre un peu plus sombre
+        return ink(out, r * bright, g * bright, b * bright, INK_SHIMMER);
       }
       for (let i = 0; i < TAIL_N; i++) {
-        const th = 0.034 * (1 - 0.6 * (i / TAIL_N));
+        const th = 0.05 * (1 - 0.55 * (i / TAIL_N));
         if (toSegment(u, y, tx[i], ty[i], tx[i + 1], ty[i + 1]) < th) {
-          if (i % 3 === 0 && seg.t < 0.2) return ink(out, ...DARK, INK_DARK);
-          const [r, g, b] = skin(c, time, k, 0.2 + (i / TAIL_N) * 0.3);
+          if (i % 5 === 0 && seg.t < 0.12) return ink(out, ...DARK, INK_DARK);
+          const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
           return ink(out, r, g, b, INK_SHIMMER);
         }
       }

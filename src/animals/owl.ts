@@ -135,6 +135,22 @@ export const owl: Animal<Owl> = {
     c.alarm = Math.max(0, c.alarm - dt * 0.6);
   },
 
+  // Tout clic fait tourner le regard, même hors du rayon de startle ; le piqué reste local.
+  tap(x, y, flock) {
+    flock.events.push({ x, y, radius: 6, amount: 1.4 });
+    for (const c of flock.creatures) {
+      const dx = c.x - x;
+      const dy = c.y - y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d <= 240) owl.startle!(c, dx / d, dy / d, 1 - d / 240, flock);
+      else {
+        c.targetX = clamp((-dx / d) * 1.2, -1, 1);
+        c.targetY = clamp((-dy / d) * 1.2, -1, 1);
+        c.lookUntil = flock.time + 4;
+      }
+    }
+  },
+
   startle(c, dx, dy, strength, flock) {
     const k = flock.tuning as typeof DEFAULTS;
     const n = Math.hypot(dx, dy) || 1;
@@ -170,7 +186,7 @@ export const owl: Animal<Owl> = {
     const lu = -c.lookY * k.headTurn;
     const headU = HEAD_U + lu * 0.015;
     const headV = lv * 0.03;
-    const irisR = 0.056 + 0.016 * c.alarm;
+    const irisR = 0.062 + 0.018 * c.alarm;
     const pupilR = 0.03 * (1 - 0.55 * c.alarm);
 
     pen.shape(pose, 0.62, (u, v) => {
@@ -207,7 +223,7 @@ export const owl: Animal<Owl> = {
         return ink(out, ...CHEVRON, INK_DARK);
       }
       // Corps duveteux, chevrons de plumage.
-      if (inEllipse(u, v, -0.1, 0, 0.17, 0.115) || inEllipse(u, av, -0.3, 0, 0.1, 0.05 + 0.1 * Math.max(0, u + 0.4))) {
+      if (inEllipse(u, v, -0.08, 0, 0.15, 0.115) || inEllipse(u, av, -0.3, 0, 0.1, 0.05 + 0.1 * Math.max(0, u + 0.4))) {
         const chev = frac((u + 0.9 * av) * 14);
         if (u < 0.0 && chev < 0.28) return ink(out, ...CHEVRON, INK_BODY);
         return ink(out, ...BODY, INK_BODY);

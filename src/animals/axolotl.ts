@@ -38,7 +38,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.5,
   fog: 0.3,
-  density: 1.2,
+  density: 0.8,
   speed: 1,
   spread: 0.1,
   sway: 0.05,
@@ -87,17 +87,17 @@ export const axolotl: Animal<Axolotl> = {
   swatch: [255, 140, 170],
   defaults: DEFAULTS,
   controls: [
-    ["Nage", [
-      { key: "tailBeat", label: "Ondulation", min: 0.2, max: 3, step: 0.05, hint: "Vitesse et ampleur de l'ondulation du corps et de la queue." },
-      { key: "rest", label: "Pauses", min: 0, max: 4, step: 0.05, hint: "Durée des pauses où il flotte. 0 : il ne s'arrête jamais." },
+    ["Swim", [
+      { key: "tailBeat", label: "Wave", min: 0.2, max: 3, step: 0.05, hint: "Vitesse et ampleur de l'ondulation du corps et de la queue." },
+      { key: "rest", label: "Rests", min: 0, max: 4, step: 0.05, hint: "Durée des pauses où il flotte. 0 : il ne s'arrête jamais." },
     ]],
-    ["Branchies et peur", [
-      { key: "gills", label: "Branchies", min: 0, max: 3, step: 0.05, hint: "Ampleur du frémissement des branchies." },
-      { key: "scare", label: "Fuite", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée de la fuite quand on clique près de lui." },
+    ["Gills and fear", [
+      { key: "gills", label: "Gills", min: 0, max: 3, step: 0.05, hint: "Ampleur du frémissement des branchies." },
+      { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée de la fuite quand on clique près de lui." },
     ]],
   ],
   area: 80000,
-  scale: 1.35,
+  scale: 1.8,
   speed: 40,
   trail: { light: [230, 130, 170], dark: [255, 140, 170] },
 
@@ -198,7 +198,7 @@ export const axolotl: Animal<Axolotl> = {
         const ru = 0.19 - i * 0.045;
         const rv = off(ru) + side * (halfWidth(ru) - 0.008);
         const a = 1.0 + i * 0.28 + back + 0.14 * fl * Math.sin(c.flutter + i * 1.3 + side);
-        const len = 0.17 - i * 0.015;
+        const len = 0.22 - i * 0.02;
         // La tige se courbe en deux segments.
         const mu = ru + Math.cos(a) * len * 0.5;
         const mv = rv + Math.sin(a) * len * 0.5 * side;
@@ -206,6 +206,7 @@ export const axolotl: Animal<Axolotl> = {
         const tu = mu + Math.cos(b) * len * 0.5;
         const tv = mv + Math.sin(b) * len * 0.5 * side;
         pen.lineBody(pose, ru, rv, mu, mv, GILL);
+        pen.lineBody(pose, ru, rv + side * 0.012, mu, mv + side * 0.012, GILL);
         pen.lineBody(pose, mu, mv, tu, tv, GILL, "*");
         // Filaments plumeux : trois de chaque côté de la tige, qui frémissent à contretemps.
         for (const [fu, fv, base] of [[mu, mv, a], [tu, tv, b]] as const) {

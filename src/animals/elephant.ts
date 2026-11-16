@@ -34,7 +34,7 @@ interface Elephant extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 0.7,
+  density: 0.45,
   sway: 0.03,
   spread: 0.04,
   farthest: 0.55,
@@ -82,7 +82,7 @@ export const elephant: Animal<Elephant> = {
     ]],
   ],
   area: 150000,
-  scale: 1.5,
+  scale: 2.1,
   speed: 38,
   trail: { light: [150, 150, 170], dark: [120, 124, 160] },
 
@@ -195,7 +195,7 @@ export const elephant: Animal<Elephant> = {
       const tuskH = baseH - 0.07;
       const tusk: number[] = [0.46, tuskH, 0.54, tuskH - 0.08, 0.6, tuskH - 0.03, 0.61, tuskH + 0.07];
       for (let i = 0; i < 6; i += 2) {
-        if (toSegment(f, h, tusk[i], tusk[i + 1], tusk[i + 2], tusk[i + 3]) < 0.016 - 0.003 * (i / 2)) return ink(out, ...IVORY, INK_SCALE);
+        if (toSegment(f, h, tusk[i], tusk[i + 1], tusk[i + 2], tusk[i + 3]) < 0.021 - 0.003 * (i / 2)) return ink(out, ...IVORY, INK_SCALE);
       }
 
       // Trompe.

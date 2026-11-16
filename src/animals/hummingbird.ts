@@ -141,23 +141,23 @@ export const hummingbird: Animal<Hummingbird> = {
     ];
     // Les deux éventails d'ailes vibrent : ouverture et balayage changent à chaque battement.
     const beat = Math.cos(h.phase);
-    const lo = 1.0 + 0.3 * beat;
-    const hi = lo + 0.75 + 0.15 * Math.cos(h.phase * 1.7);
+    const lo = 0.7 + 0.35 * beat;
+    const hi = lo + 0.55 + 0.1 * Math.cos(h.phase * 1.7);
     const minBody = pen.cw * 0.4;
 
     pen.shape(pose, 0.62, (u, v) => {
       const av = Math.abs(v);
       // Bec : long, droit et fin.
-      if (u > 0.3 && u < 0.62 && av < Math.max(0.012, minBody / S)) return ink(out, ...BEAK, INK_DARK, "-=");
+      if (u > 0.3 && u < 0.62 && av < Math.max(0.016, minBody / S)) return ink(out, ...BEAK, INK_DARK, "-=");
       // Tête : petite, avec l'oeil.
-      if (inEllipse(u, av, 0.27, 0, 0.055, 0.05)) {
-        if (inEllipse(u, v, 0.285, 0.025, 0.014, 0.014)) return ink(out, ...EYE, INK_DARK);
+      if (inEllipse(u, av, 0.27, 0, 0.07, 0.062)) {
+        if (inEllipse(u, v, 0.29, 0.025, 0.018, 0.018)) return ink(out, ...EYE, INK_DARK);
         return ink(out, ...GREEN, INK_SHIMMER);
       }
       // Gorge, sous le bec, côté face.
-      if (inEllipse(u, av, 0.18, 0, 0.065, 0.034)) return ink(out, ...throat, INK_LIT, "#%");
+      if (inEllipse(u, av, 0.2, 0, 0.075, 0.05)) return ink(out, ...throat, INK_LIT, "#%");
       // Corps irisé vert-cyan, fuselé.
-      if (inEllipse(u, av, 0.08, 0, 0.2, 0.062)) {
+      if (inEllipse(u, av, 0.08, 0, 0.19, 0.085)) {
         return ink(out, ...(av < 0.02 ? CYAN : GREEN), INK_SHIMMER);
       }
       // Queue en éventail : s'élargit vers l'arrière.
@@ -165,14 +165,16 @@ export const hummingbird: Animal<Hummingbird> = {
         const half = 0.012 + 0.07 * ((-0.1 - u) / 0.3);
         if (av < half) return ink(out, ...(av > half * 0.75 ? CYAN : TAIL), INK_SCALE);
       }
-      // Ailes : un flou, deux éventails translucides qui partent de l'épaule.
-      const du = u - 0.1;
-      const r = Math.hypot(du, av - 0.03);
-      if (r > 0.04 && r < 0.44 && av > 0.03) {
-        const a = Math.atan2(av - 0.03, -du + 0.1);
-        if (a > lo && a < hi) {
-          const edge = a < lo + 0.07 || a > hi - 0.07 || r > 0.4;
-          return edge ? ink(out, ...WING, INK_GLOW, "(|)") : ink(out, ...WING, INK_GLASS, ".:");
+      // Ailes : deux arcs fins qui partent de l'épaule et vibrent (haut et bas du battement).
+      const du = u - 0.06;
+      const dv = av - 0.04;
+      const r = Math.hypot(du, dv);
+      if (r > 0.05 && r < 0.4 && av > 0.04) {
+        const a = Math.atan2(dv, -du);
+        const taper = 0.11 * (1 - r / 0.5);
+        // Arc courbé : l'angle dérive avec la distance, ce qui donne une plume.
+        if (Math.abs(a - (lo + r * 1.2)) < taper || Math.abs(a - (hi + r * 1.2)) < taper * 0.8) {
+          return ink(out, ...WING, r > 0.28 ? INK_GLOW : INK_GLASS, "(|)");
         }
       }
       return false;

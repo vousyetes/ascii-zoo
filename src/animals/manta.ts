@@ -9,7 +9,7 @@
  * montre le ventre blanc un instant, puis la raie reprend le parcours.
  */
 import { SHARED_TUNING, type Animal, type Creature } from "../flock";
-import { INK_DARK, INK_GLASS, INK_SCALE, INK_SPOT, ink, type RGB } from "../ink";
+import { INK_DARK, INK_GLASS, INK_LIT, INK_SCALE, INK_SHIMMER, INK_SPOT, ink, type RGB } from "../ink";
 import { clamp, rand, smoothstep, TAU } from "../math";
 import { inEllipse, toSegment } from "./shapes";
 
@@ -32,16 +32,16 @@ interface Manta extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 0.55,
+  density: 0.3,
   speed: 1,
   sway: 0.03,
   spread: 0.04,
   size: 1.2,
-  farthest: 0.3,
+  farthest: 0.7,
   farBias: 1,
   grip: 1.6,
   separation: 900,
-  fog: 0.6,
+  fog: 0.15,
   shimmer: 0.2,
   sparkle: 0.04,
   trail: 1.3,
@@ -53,9 +53,9 @@ const DEFAULTS = {
 };
 
 /** Palette de la marque et dérivés. */
-const BACK: RGB = [30, 34, 100];
-const BACK_LIT: RGB = [60, 96, 190];
-const EDGE: RGB = [20, 22, 70];
+const BACK: RGB = [138, 116, 255];
+const BACK_LIT: RGB = [92, 200, 255];
+const EDGE: RGB = [110, 100, 230];
 const WHITE: RGB = [236, 238, 247];
 const BELLY_EDGE: RGB = [150, 190, 235];
 const GILL: RGB = [92, 80, 150];
@@ -74,8 +74,8 @@ export const manta: Animal<Manta> = {
       { key: "loop", label: "Looping", min: 0, max: 2, step: 0.05, hint: "La durée du looping quand on clique près d'une raie. 0 les rend indifférentes." },
     ]],
   ],
-  area: 260000,
-  scale: 3.4,
+  area: 700000,
+  scale: 5,
   speed: 36,
   trail: { light: [70, 118, 226], dark: [92, 200, 255] },
 
@@ -157,7 +157,7 @@ export const manta: Animal<Manta> = {
       if (u < -0.12 && u > -0.55) {
         const d = toSegment(u, v, -0.12, 0, -0.55, tailSway);
         const tt = (-0.12 - u) / 0.43;
-        if (d < tailW * (1 - 0.6 * tt)) return ink(out, ...(cosRoll >= 0 ? EDGE : BELLY_EDGE), INK_DARK);
+        if (d < tailW * (1 - 0.6 * tt)) return ink(out, ...(cosRoll >= 0 ? BACK : BELLY_EDGE), INK_LIT);
       }
 
       // Onde : de l'épaule vers le bout, de plus en plus ample. tilt > 0 = l'aile se relève.
@@ -171,7 +171,7 @@ export const manta: Animal<Manta> = {
       const lobeV = 0.045 / flat;
       if (u > 0.1 && u < 0.24) {
         const lv = toSegment(u, av, 0.1, lobeV, 0.235, lobeV * 1.5);
-        if (lv < 0.014) return ink(out, ...(cosRoll >= 0 ? BACK : BELLY_EDGE), INK_DARK);
+        if (lv < 0.014) return ink(out, ...(cosRoll >= 0 ? BACK_LIT : BELLY_EDGE), INK_LIT);
       }
 
       // Corps central : tête large et arrondie.
@@ -179,8 +179,8 @@ export const manta: Animal<Manta> = {
       // Ailes : losange aux bouts pointus, bord d'attaque avançant puis reculant vers le bout.
       let inWing = false;
       if (tw < 1) {
-        const front = 0.1 - 0.2 * Math.pow(tw, 1.6);
-        const back = -0.16 + 0.06 * Math.pow(tw, 1.3);
+        const front = 0.16 - 0.3 * Math.pow(tw, 1.6);
+        const back = -0.3 + 0.16 * Math.pow(tw, 1.3);
         inWing = u < front && u > back;
       }
       if (!inHead && !inWing) return false;
@@ -198,12 +198,14 @@ export const manta: Animal<Manta> = {
       // Dos : sombre, plus clair vers le centre, bords plus profonds.
       if (inEllipse(u, av, 0.17, 0.016, 0.012, 0.009)) return ink(out, ...EYE, INK_SPOT);
       // Épaulettes blanches symétriques : un croissant épais sur chaque épaule, plus une petite marque.
-      if (inEllipse(u, av, 0.06, 0.14, 0.055, 0.03) && !inEllipse(u, av, 0.095, 0.14, 0.04, 0.03)) return ink(out, ...WHITE, INK_SPOT);
+      if (inEllipse(u, av, 0.06, 0.14, 0.055, 0.03) && !inEllipse(u, av, 0.095, 0.14, 0.04, 0.03)) return ink(out, ...WHITE, INK_LIT);
       if (inEllipse(u, av, -0.05, 0.1, 0.015, 0.012)) return ink(out, ...WHITE, INK_SPOT);
       const mid = 1 - clamp(tw, 0, 1);
-      if (tw > 0.86) return ink(out, ...EDGE, INK_DARK);
-      return ink(out, BACK[0] + (BACK_LIT[0] - BACK[0]) * mid, BACK[1] + (BACK_LIT[1] - BACK[1]) * mid, BACK[2] + (BACK_LIT[2] - BACK[2]) * mid, INK_SCALE);
-    }, { light: 0.7 + 0.3 * Math.max(0, cosRoll), tilt: 1.5 });
+      // Cyan au centre, violet vers les bouts, en lumière.
+      const g = clamp(tw * 0.8 + (u < -0.05 ? 0.2 : 0), 0, 1);
+      const mx = (i: number) => BACK_LIT[i] + (BACK[i] - BACK_LIT[i]) * g;
+      return ink(out, mx(0), mx(1), mx(2), mid > 0.45 ? INK_LIT : INK_SHIMMER);
+    }, { light: 1.1 + 0.2 * Math.max(0, cosRoll), tilt: 1.5 });
 
     // Sillage : de légers remous au bout des ailes quand elles descendent, et à la queue.
     const down = Math.max(0, -Math.sin(m.phase)) * (1 - m.glide) * amp;

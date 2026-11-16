@@ -4,7 +4,7 @@ Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version V
 
 **Les 12 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
 
-**État honnête :** éléphant, rhino, paon, axolotl, poulpe et hibou se lisent bien. Gorille, raie manta et caméléon sont encore faibles en lisibilité (trop sombres ou trop petits), à retravailler.
+**État honnête :** éléphant, escargot, colibri, flamant, axolotl, poulpe, caméléon et paon se lisent bien. Le gorille ressemble encore à un bloc (silhouette à reprendre), la raie manta est très grande et souvent coupée par le bord, le rhino est petit. Les comportements au clic ont été vus pour la plupart, pas tous. `scripts/shot.mjs` capture un animal en 9:16 pour itérer.
 
 ```sh
 npm install && npm run dev

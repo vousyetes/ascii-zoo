@@ -51,10 +51,10 @@ const DEFAULTS = {
 // Palette de la marque : soleil, corail, rose, violet, cyan.
 const PALETTE: RGB[] = [
   [255, 176, 103],
-  [255, 111, 97],
-  [200, 111, 208],
-  [138, 116, 255],
-  [92, 200, 255],
+  [255, 138, 112],
+  [226, 140, 240],
+  [160, 140, 255],
+  [110, 214, 255],
 ];
 const EYE: RGB = [255, 238, 214];
 const PUPIL: RGB = [10, 8, 18];
@@ -87,8 +87,8 @@ export const octopus: Animal<Octopus> = {
       { key: "scare", label: "Fuite", min: 0, max: 3, step: 0.05, hint: "Vitesse de la fuite et taille du nuage d'encre au clic. 0 le rend insensible." },
     ]],
   ],
-  area: 105000,
-  scale: 1.7,
+  area: 170000,
+  scale: 2.2,
   speed: 50,
   trail: { light: [120, 80, 200], dark: [138, 116, 255] },
 
@@ -110,8 +110,6 @@ export const octopus: Animal<Octopus> = {
 
     o.hue += (o.hueTarget - o.hue) * Math.min(1, dt * 3);
     o.flash = Math.max(0, o.flash - dt * 1.2);
-    // Apres le flash, la couleur revient doucement a la sienne si elle a ete changee.
-    if (!fleeing && Math.abs(o.hueTarget - Math.round(o.hueTarget)) < 1e-6) o.hueTarget = Math.round(o.hueTarget);
 
     const cruise = flock.cruise(o);
     const acc = flock.begin();
@@ -153,11 +151,11 @@ export const octopus: Animal<Octopus> = {
     // Nuage d'encre : taches sombres violettes laissees dans le trail, qui s'etalent avec le temps.
     if (flock.time < o.inkUntil) {
       const age = (flock.time - o.inkFrom) / Math.max(0.01, o.inkUntil - o.inkFrom);
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 8; i++) {
         const u = -0.15 - 0.4 * hash3(o.id, i, Math.floor(flock.time * 12));
         const v = (hash3(o.id, i + 9, Math.floor(flock.time * 12)) - 0.5) * (0.3 + 0.8 * age);
         pen.toWorld(pose, u, v, at);
-        pen.shed(at.x, at.y, 0.35 * o.depth);
+        pen.shed(at.x, at.y, 0.7 * o.depth);
       }
     }
 
@@ -168,11 +166,11 @@ export const octopus: Animal<Octopus> = {
       const side = (n - (ARMS - 1) / 2) / ((ARMS - 1) / 2);
       for (let i = 0; i <= SEGS; i++) {
         const f = i / SEGS;
-        const len = L * (0.8 + 0.3 * hash3(o.id, n, 3)) * (1 - 0.3 * sq);
+        const len = L * (0.85 + 0.2 * hash3(o.id, n, 3)) * (1 - 0.3 * sq);
         armU[n * (SEGS + 1) + i] = -0.06 - f * len;
         armV[n * (SEGS + 1) + i] =
-          side * 0.11 * (1 + 0.9 * f) * spread +
-          0.07 * (1 - 0.6 * sq) * Math.sin(o.phase * 0.8 - f * 5 + n * 1.1) * f;
+          side * 0.13 * (1 + 1.1 * f) * spread +
+          0.045 * (1 - 0.6 * sq) * Math.sin(o.phase * 0.8 - f * 5 + n * 1.1) * f;
       }
     }
 
@@ -209,7 +207,7 @@ export const octopus: Animal<Octopus> = {
         const base = n * (SEGS + 1);
         for (let i = 0; i < SEGS; i++) {
           const a = base + i;
-          const w = 0.036 * (1 - 0.8 * ((i + 0.5) / SEGS));
+          const w = 0.05 * (1 - 0.75 * ((i + 0.5) / SEGS));
           const d = toSegment(u, v, armU[a], armV[a], armU[a + 1], armV[a + 1]);
           if (d > w) continue;
           // Deux rangees de ventouses : petits cercles INK_SPOT de part et d'autre de l'axe.

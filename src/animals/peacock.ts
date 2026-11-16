@@ -70,7 +70,7 @@ function gradient(t: number, out: RGB): RGB {
   return out;
 }
 
-const FEATHERS = 15;
+const FEATHERS = 23;
 const col: RGB = [0, 0, 0];
 const at = { x: 0, y: 0 };
 
@@ -173,12 +173,15 @@ export const peacock: Animal<Peacock> = {
       const ux = -Math.cos(a);
       const vy = -Math.sin(a);
       gradient(s, col);
+      for (let q = 0; q < 3; q++) col[q] = lerp(col[q], 255, 0.25 * o);
       const tipU = base + ux * len;
       const tipV = baseV + vy * len;
-      // Deux plumes par rayon pour garder l'eventail plein.
-      pen.lineBody(pose, base + ux * r0, (baseV + vy * r0) * f, tipU, tipV * f, col);
-      const a2 = a + (o > 0.3 ? 0.07 : 0.03);
-      pen.lineBody(pose, base - Math.cos(a2) * r0, (baseV - Math.sin(a2) * r0) * f, base - Math.cos(a2) * len * 0.9, (baseV - Math.sin(a2) * len * 0.9) * f, col);
+      // Plume epaisse : trois traits cote a cote, eclaircis quand la roue est ouverte pour plus de presence.
+      for (let j = -1; j <= 1; j++) {
+        const aj = a + j * (o > 0.3 ? 0.05 : 0.025);
+        const l = len * (j === 0 ? 1 : 0.92);
+        pen.lineBody(pose, base - Math.cos(aj) * r0, (baseV - Math.sin(aj) * r0) * f, base - Math.cos(aj) * l, (baseV - Math.sin(aj) * l) * f, col);
+      }
       if (o > 0.25) {
         // Ocelle : anneau de la couleur de la plume, centre sombre.
         pen.toWorld(pose, tipU, tipV * f, at);

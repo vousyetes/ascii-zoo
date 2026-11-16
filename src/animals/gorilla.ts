@@ -47,7 +47,7 @@ const DEFAULTS = {
   farthest: 0.4,
   farBias: 1.3,
   grip: 1.5,
-  separation: 500,
+  separation: 900,
   trail: 0.4,
   trailFade: 0.6,
   shimmer: 0.05,
@@ -59,20 +59,20 @@ const DEFAULTS = {
 };
 
 // Palette sombre : gris-bleu, avec reflets violet et cyan faibles.
-const BODY: RGB = [40, 45, 66];
-const LIMB: RGB = [32, 36, 55];
-const FAR: RGB = [22, 25, 40];
-const SILVER: RGB = [156, 162, 178];
-const SILVER_LOW: RGB = [122, 128, 148];
-const FACE: RGB = [18, 19, 28];
-const MUZZLE: RGB = [48, 52, 72];
-const VIOLET: RGB = [88, 78, 152];
-const CYAN: RGB = [44, 98, 126];
-const EYE_COLOR: RGB = [150, 190, 230];
+const BODY: RGB = [90, 98, 126];
+const LIMB: RGB = [122, 130, 164];
+const FAR: RGB = [46, 52, 78];
+const SILVER: RGB = [190, 196, 214];
+const SILVER_LOW: RGB = [160, 168, 190];
+const FACE: RGB = [30, 32, 46];
+const MUZZLE: RGB = [62, 68, 92];
+const VIOLET: RGB = [138, 116, 255];
+const CYAN: RGB = [92, 200, 255];
+const EYE_COLOR: RGB = [220, 240, 255];
 
 /** Hauteur du sol dans le repère du corps (fraction de span). */
 const G = -0.3;
-const TORSO = 0.46;
+const TORSO = 0.5;
 
 const sstep = (t: number) => t * t * (3 - 2 * t);
 const ease = (a: number, b: number, k: number) => a + (b - a) * Math.min(1, k);
@@ -90,8 +90,8 @@ export const gorilla: Animal<Gorilla> = {
       { key: "thump", label: "Battements", min: 0.3, max: 3, step: 0.05, hint: "Nombre et vitesse des coups sur le torse après un clic." },
     ]],
   ],
-  area: 110000,
-  scale: 1.9,
+  area: 180000,
+  scale: 2.4,
   speed: 38,
   trail: { light: [60, 66, 90], dark: [70, 76, 104] },
 
@@ -190,26 +190,26 @@ export const gorilla: Animal<Gorilla> = {
     // Hanches, épaules (u en avant, h en hauteur, repère de profil).
     const hipH = G + 0.22 - 0.12 * sit + 0.06 * rise;
     const hipU = -0.2 + 0.1 * rise - 0.04 * sit;
-    const th = 0.42 + 0.7 * sit + 1.1 * rise;
+    const th = 0.4 + 0.6 * sit + 1.1 * rise;
     const ct = Math.cos(th);
     const st = Math.sin(th);
     const shU = hipU + TORSO * ct;
     const shH = hipH + TORSO * st;
     // Tête basse à quatre pattes, relevée quand il se dresse.
-    const headU = shU + 0.17 - 0.03 * rise;
-    const headH = shH - 0.05 + 0.1 * rise + 0.04 * sit;
+    const headU = shU + 0.24 - 0.03 * rise;
+    const headH = shH - 0.17 + 0.17 * rise + 0.05 * sit;
 
     // Mains : marche, pendantes, ou battant le torse.
     const chestU = hipU + TORSO * 0.55 * ct + st * 0.17;
     const chestH = hipH + TORSO * 0.55 * st - ct * 0.17;
     const armU = shU + 0.01;
-    const armH = shH - 0.04;
+    const armH = shH - 0.06;
     const hand = (ph: number, beatOff: number, o: { u: number; h: number }) => {
       const lift = Math.max(0, Math.cos(ph));
       const wu = armU + 0.1 + 0.12 * Math.sin(ph) * (1 - sit);
       const wh = G + 0.04 + 0.08 * lift * c.go + 0.06 * sit;
       const hu = armU + 0.05 + 0.02 * Math.sin(c.breath);
-      const hh = Math.max(G + 0.06, armH - 0.4);
+      const hh = Math.max(G + 0.06, armH - 0.55);
       const bu = chestU;
       const bh = chestH + 0.14 * Math.sin(c.beatPhase + beatOff);
       o.u = ease(ease(wu, hu, rise), bu, pound);
@@ -248,8 +248,8 @@ export const gorilla: Animal<Gorilla> = {
       const h = -v * f;
 
       // Bras proche : devant tout.
-      if (limb(u, h, shPt, handNear, -0.06, 0.02, 0.075)) return ink(out, ...LIMB, INK_BODY);
-      if (inEllipse(u, h, handNear.u + 0.01, handNear.h - 0.01, 0.08, 0.06)) return ink(out, ...FACE, INK_BODY);
+      if (limb(u, h, shPt, handNear, -0.06, 0.02, 0.09)) return ink(out, ...LIMB, INK_BODY);
+      if (inEllipse(u, h, handNear.u + 0.01, handNear.h - 0.01, 0.08, 0.06)) return ink(out, ...FACE, INK_DARK);
 
       // Tête : crâne, crête sagittale, front marqué, museau plat.
       const hx = u - headU;
@@ -263,31 +263,31 @@ export const gorilla: Animal<Gorilla> = {
       if (inEllipse(hx, hy, -0.03, 0.085, 0.075, 0.06)) return ink(out, ...BODY, INK_BODY);
 
       // Jambe proche.
-      if (limb(u, h, hipPt, footNear, 0.07, 0.03, 0.08)) return ink(out, ...LIMB, INK_BODY);
-      if (inEllipse(u, h, footNear.u + 0.03, footNear.h, 0.08, 0.035)) return ink(out, ...FACE, INK_BODY);
+      if (limb(u, h, hipPt, footNear, 0.07, 0.03, 0.095)) return ink(out, ...LIMB, INK_BODY);
+      if (inEllipse(u, h, footNear.u + 0.03, footNear.h, 0.09, 0.04)) return ink(out, ...FACE, INK_DARK);
 
       // Torse : capsule hanches-épaules, plus large aux épaules, qui respire.
       const d = toSegment(u, h, hipU, hipH, shU, shH);
       const along = seg.t;
-      const rad = (0.15 + 0.07 * sstep(along)) * br;
+      const rad = (0.13 + 0.1 * sstep(along)) * br;
       const sx = u - (shU - 0.02);
-      const sy = h - (shH + 0.03);
-      const hump = Math.hypot(sx, sy) < 0.2 * br;
+      const sy = h - (shH + 0.06);
+      const hump = Math.hypot(sx, sy) < 0.26 * br;
       if (d < rad || hump) {
         // Côté du dos (au-dessus de l'axe) ou du ventre.
         const side = (u - hipU) * -st + (h - hipH) * ct;
         const back = side > 0;
-        const q = hump ? Math.hypot(sx, sy) / (0.2 * br) : d / rad;
-        if (back && along > 0.05 && along < 0.9 && side > 0.04 && q < 0.93) {
+        const q = hump ? Math.hypot(sx, sy) / (0.26 * br) : d / rad;
+        if (back && along > 0.05 && along < 0.9 && side > 0.0 && q < 0.9) {
           // Dos argenté : plus clair vers le milieu, plus bas en croupe.
           return ink(out, ...(along < 0.4 ? SILVER_LOW : SILVER), INK_BODY);
         }
-        if (q > 0.85) return ink(out, ...(back ? VIOLET : CYAN), INK_BODY);
+        if (q > 0.8) return ink(out, ...(back ? VIOLET : CYAN), INK_BODY);
         return ink(out, ...BODY, INK_BODY);
       }
 
       // Bras éloigné et jambe éloignée, plus sombres, derrière le torse.
-      if (limb(u, h, shPt, handFar, -0.06, 0.02, 0.07)) return ink(out, ...FAR, INK_BODY);
+      if (limb(u, h, shPt, handFar, -0.06, 0.02, 0.08)) return ink(out, ...FAR, INK_BODY);
       if (inEllipse(u, h, handFar.u + 0.01, handFar.h - 0.01, 0.075, 0.055)) return ink(out, ...FAR, INK_BODY);
       if (limb(u, h, hipPt, footFar, 0.07, 0.03, 0.075)) return ink(out, ...FAR, INK_BODY);
       if (inEllipse(u, h, footFar.u + 0.03, footFar.h, 0.075, 0.032)) return ink(out, ...FAR, INK_BODY);

@@ -79,8 +79,8 @@ export const rhino: Animal<Rhino> = {
       { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
     ]],
   ],
-  area: 140000,
-  scale: 1.15,
+  area: 190000,
+  scale: 1.9,
   speed: 40,
   trail: { light: [150, 130, 190], dark: [168, 148, 214] },
 

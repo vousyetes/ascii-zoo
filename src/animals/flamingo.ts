@@ -32,6 +32,8 @@ export interface Flamingo extends Creature {
   rest: 1 | -1;
   /** Fin du vol force par un clic. */
   scaredUntil: number;
+  /** Sens de l'affichage : 1 vers la droite, -1 vers la gauche. */
+  dir: 1 | -1;
 }
 
 const DEFAULTS = {
@@ -60,7 +62,7 @@ const PINK: RGB = [200, 111, 208];
 const PALE: RGB = [255, 196, 200];
 const BLACK: RGB = [28, 24, 34];
 const BILL: RGB = [255, 214, 214];
-const LEG: RGB = [255, 140, 130];
+const LEG: RGB = [255, 170, 160];
 const EYE: RGB = [14, 12, 16];
 const GLINT: RGB = [236, 238, 247];
 
@@ -83,14 +85,14 @@ export const flamingo: Animal<Flamingo> = {
       { key: "scare", label: "Peur du clic", min: 0, max: 3, step: 0.05, hint: "Duree de la fuite en vol quand on clique pres de lui." },
     ]],
   ],
-  area: 130000,
-  scale: 2.1,
+  area: 180000,
+  scale: 2.7,
   speed: 55,
   trail: { light: [214, 120, 130], dark: [255, 150, 150] },
 
   create: (c) => ({
     ...c, mode: "walk", until: 0, gait: rand(0, TAU), beat: rand(0, TAU), air: 0, open: 0, tuck: 0,
-    rest: hash3(c.id, 3, 7) < 0.5 ? 1 : -1, scaredUntil: 0,
+    rest: hash3(c.id, 3, 7) < 0.5 ? 1 : -1, scaredUntil: 0, dir: 1,
   }),
 
   enter(c, flock) {
@@ -153,117 +155,121 @@ export const flamingo: Animal<Flamingo> = {
   draw(c, pen, flock) {
     const S = c.span;
     const out = pen.ink;
-    const pose = { x: c.x, y: c.y, heading: c.heading, span: S, depth: c.depth, id: c.id };
+    // Silhouette de profil, toujours debout a l'ecran : seul le sens (gauche/droite) suit le cap.
+    const cs = Math.cos(c.heading);
+    if (Math.abs(cs) > 0.25) c.dir = cs >= 0 ? 1 : -1;
+    const dir = c.dir;
+    const pose = { x: c.x, y: c.y, heading: 0, span: S, depth: c.depth, id: c.id };
     const air = c.air;
     const standing = c.mode === "stand";
     const wobble = Math.sin(flock.time * 1.3 + c.id) * (standing ? 1 : 0.35);
+    // u vers l'avant, v vers le bas (repere local), miroir applique a l'affichage.
+    const L = (u0: number, v0: number, u1: number, v1: number) => { pen.lineBody(pose, u0 * dir, v0, u1 * dir, v1, LEG); pen.lineBody(pose, (u0 + 0.014) * dir, v0, (u1 + 0.014) * dir, v1, LEG); }
 
-    // Cou en S : points du garrot (u 0.2) a la tete. Tendu en vol, replie sous l'aile en pause.
-    const amp = lerp(0.1, 0.012, air);
+    // Cou en S : du garrot a la tete. Tendu vers l'avant en vol, tete sur le dos en pause (tuck).
+    const neckW = Math.max(0.022, (pen.cw * 0.95) / S);
+    const headR = Math.max(0.055, (pen.cw * 0.9) / S);
     for (let i = 0; i <= NECK_N; i++) {
       const s = i / NECK_N;
-      const reach = lerp(0.34, 0.5, air);
-      let u = 0.2 + reach * s;
-      let v = amp * Math.sin(s * TAU * 0.95 + wobble * 0.9) * (0.4 + s);
-      // Tete sous l'aile : le bout du cou revient se poser sur le flanc.
-      u = lerp(u, 0.06 - 0.05 * s, c.tuck * s);
-      v = lerp(v, 0.075, c.tuck * s);
+      // Sol : S (avant, arriere, avant) en montant.
+      let u = 0.17 + 0.09 * Math.sin(s * Math.PI * 1.9 + 0.5 + wobble * 0.15) + 0.02 * s;
+      let v = -0.02 - 0.52 * s;
+      // Vol : droit vers l'avant, legere descente.
+      u = lerp(u, 0.17 + 0.5 * s, air);
+      v = lerp(v, -0.02 - 0.03 * s, air);
+      // Tete sur le dos : le cou se replie en boucle sur le flanc.
+      u = lerp(u, 0.12 - 0.2 * s + 0.06 * Math.sin(s * Math.PI), c.tuck);
+      v = lerp(v, -0.1 - 0.06 * Math.sin(s * Math.PI), c.tuck);
       nu[i] = u;
       nv[i] = v;
     }
     const hu = nu[NECK_N];
     const hv = nv[NECK_N];
-    const neckW = Math.max(0.02, (pen.cw * 0.5) / S);
-    const headR = Math.max(0.035, (pen.cw * 0.62) / S);
-    // Bec : part de la tete, coude vers le bas (donc vers le cote en vue du dessus).
-    const bu1 = hu + 0.055 * (1 - c.tuck);
-    const bv1 = hv + 0.012;
-    const bu2 = bu1 + 0.04 * (1 - c.tuck);
-    const bv2 = bv1 + 0.03 * (1 - c.tuck);
+    // Bec coude : part vers l'avant, puis plonge vers le bas (bout noir).
+    const bu1 = hu + 0.1 * (1 - c.tuck * 0.3);
+    const bv1 = hv + 0.008;
+    const bu2 = bu1 + 0.03;
+    const bv2 = bv1 + 0.08 * (1 - 0.7 * air);
 
-    // Pattes : tres longues, genou inverse (plie vers l'arriere puis le pied repart vers l'avant).
+    // Pattes fines, genou inverse (plie vers l'arriere, pied reparti vers l'avant).
     const upLeg = !air && standing ? c.rest : 0;
+    const gnd = 0.58;
     for (const side of [-1, 1] as const) {
-      const hipU = -0.06;
-      const hipV = 0.035 * side;
+      const hipU = -0.03 + 0.02 * side;
+      const hipV = 0.07;
       let kneeU: number, kneeV: number, footU: number, footV: number;
       if (air > 0.5) {
-        kneeU = -0.34; kneeV = 0.02 * side; footU = -0.68; footV = 0.012 * side;
+        kneeU = -0.28 - 0.04 * side; kneeV = 0.06; footU = -0.66 - 0.04 * side; footV = 0.08 + 0.02 * side;
       } else if (upLeg === side) {
-        // Patte repliee : le tibia remonte contre le corps.
-        kneeU = -0.2; kneeV = 0.06 * side; footU = -0.06; footV = 0.07 * side;
+        // Patte repliee : cuisse vers l'arriere, tibia remonte vers l'avant sous le ventre.
+        kneeU = hipU - 0.13; kneeV = 0.3; footU = hipU + 0.1; footV = 0.24;
       } else if (standing) {
-        kneeU = -0.16; kneeV = 0.1 * side; footU = -0.06; footV = 0.2 * side;
+        kneeU = hipU - 0.04; kneeV = 0.32; footU = hipU + 0.01; footV = gnd;
       } else {
         const ph = c.gait + (side > 0 ? Math.PI : 0);
         const lift = Math.max(0, Math.sin(ph));
-        footU = hipU + 0.3 * Math.cos(ph);
-        footV = (0.16 + 0.05 * lift) * side;
-        kneeU = lerp(hipU, footU, 0.45) - 0.14;
-        kneeV = (0.1 + 0.1 * lift) * side;
+        footU = hipU + 0.16 * Math.cos(ph);
+        footV = gnd - 0.1 * lift;
+        kneeU = lerp(hipU, footU, 0.4) - 0.07;
+        kneeV = 0.31 - 0.04 * lift;
         if (lift < 0.05 && Math.cos(ph) > 0.85) {
-          // Rides dans l'eau a chaque pose de pied.
-          pen.toWorld(pose, footU, footV, at);
+          pen.toWorld(pose, footU * dir, footV, at);
           pen.shed(at.x, at.y, 0.3 * c.depth);
         }
       }
-      pen.lineBody(pose, hipU, hipV, kneeU, kneeV, LEG);
-      pen.lineBody(pose, kneeU, kneeV, footU, footV, LEG);
+      L(hipU, hipV, kneeU, kneeV);
+      L(kneeU, kneeV, footU, footV);
+      // Petit pied vers l'avant (sauf en vol).
+      if (air < 0.5 && upLeg !== side) L(footU, footV, footU + 0.05, footV);
     }
     if (standing) {
-      // Une seule ride, sous la patte d'appui.
-      pen.toWorld(pose, -0.06, 0.2 * -c.rest, at);
+      pen.toWorld(pose, -0.03 * dir, gnd, at);
       if (Math.random() < 0.04) pen.shed(at.x, at.y, 0.4 * c.depth);
     }
 
-    // Ouverture des ailes : battement en vol, repli sur le dos au sol.
+    // Aile : repliee sur le flanc au sol, grand battement en vol (rose puis remiges noires).
     const w = c.open;
-    const wingReach = 0.08 + 0.42 * w;
-    pen.shape(pose, 0.72, (u, v) => {
-      const av = Math.abs(v);
-      // Tete et bec (bout noir).
+    const flap = Math.cos(c.beat);
+    const wtU = -0.3 - 0.25 * w; // bout de l'aile (vers l'arriere)
+    const wtV = -0.04 - 0.5 * w * flap; // haut / bas
+    pen.shape(pose, 1.25, (x, v) => {
+      const u = x * dir;
+      // Tete et bec.
       if (Math.hypot(u - hu, v - hv) < headR) return ink(out, ...CORAL, INK_DARK);
-      if (toSegment(u, v, hu, hv, bu1, bv1) < headR * 0.6) return ink(out, ...BILL);
-      if (toSegment(u, v, bu1, bv1, bu2, bv2) < headR * 0.6) return ink(out, ...BLACK, INK_DARK);
-      // Cou : plus pale a la base, plus corail vers la tete.
+      if (toSegment(u, v, hu, hv, bu1, bv1) < headR * 0.55) return ink(out, ...BILL);
+      if (toSegment(u, v, bu1, bv1, bu2, bv2) < headR * 0.6) return ink(out, ...(seg.t > 0.35 || v > bv1 + 0.02 ? BLACK : BILL), seg.t > 0.35 ? INK_DARK : INK_SCALE);
+      // Cou : pale a la base, corail vers la tete.
       for (let i = 0; i < NECK_N; i++) {
         if (toSegment(u, v, nu[i], nv[i], nu[i + 1], nv[i + 1]) < neckW) {
           const col = mix(PALE, CORAL, (i + seg.t) / NECK_N);
           return ink(out, col[0], col[1], col[2], INK_SCALE);
         }
       }
-      // Ailes ouvertes : bord d'attaque rose, remiges noires au bord de fuite.
-      if (w > 0.08 && av > 0.05 && av < wingReach) {
-        const s = (av - 0.05) / (wingReach - 0.05);
-        const le = 0.13 - 0.05 * s;
-        const te = -0.1 - 0.09 * s;
-        if (u < le && u > te) {
-          const q = (u - te) / (le - te);
-          if (s > 0.35 && q < 0.5) {
-            // Rémiges : doigts separes par de fines fentes vers le bout.
-            if (s > 0.8 && (q * 7) % 1 < 0.2) return false;
-            return ink(out, ...BLACK, INK_DARK);
-          }
-          const col = mix(PINK, CORAL, q);
-          return ink(out, col[0], col[1], col[2], INK_SCALE);
+      // Aile ouverte : bande effilee de l'epaule au bout, remiges noires sur la moitie externe.
+      if (w > 0.1) {
+        const d = toSegment(u, v, 0.06, -0.03, wtU, wtV);
+        if (d < 0.075 * (1 - seg.t * 0.6)) {
+          if (seg.t > 0.5) return ink(out, ...BLACK, INK_DARK);
+          return ink(out, ...mix(CORAL, PINK, seg.t * 2), INK_SCALE);
         }
       }
-      // Queue courte.
-      if (inEllipse(u, av, -0.2, 0, 0.07, 0.035)) return ink(out, ...PINK);
-      // Corps ovale : corail a l'avant, rose pale a l'arriere.
-      if (inEllipse(u, av, 0, 0, 0.21, 0.085)) {
-        const q = clamp((u + 0.21) / 0.42, 0, 1);
+      // Queue courte et pointue.
+      if (toSegment(u, v, -0.18, 0, -0.34, 0.01) < 0.03 * (1 - 0.5 * seg.t)) return ink(out, ...PINK);
+      // Corps ovale : corail devant, rose pale derriere, ventre plus clair.
+      if (inEllipse(u, v, 0, 0, 0.22, 0.105)) {
+        const q = clamp((u + 0.22) / 0.44, 0, 1);
+        // Aile repliee : remiges noires sur l'arriere du flanc.
+        if (w < 0.3 && v > -0.02 && v < 0.05 && u < -0.1) return ink(out, ...BLACK, INK_DARK);
+        if (w < 0.3 && u < 0.02 && v < 0.03) return ink(out, ...mix(PINK, CORAL, q + 0.2), INK_SCALE);
         const col = mix(PALE, CORAL, q);
-        // Quelques rémiges noires dessinees sur le flanc quand l'aile est repliee.
-        if (w < 0.3 && av > 0.055 && u < -0.02) return ink(out, ...BLACK, INK_DARK);
         return ink(out, col[0], col[1], col[2], INK_SCALE);
       }
       return false;
     }, { light: 0.85 + 0.15 * (1 - w) });
 
-    // Oeil : une cellule fixe, seulement si la tete est assez grosse.
-    if (headR * S >= pen.cw * 0.55 && c.tuck < 0.5) {
-      pen.toWorld(pose, hu, hv, at);
+    // Oeil : une cellule, sur la tete.
+    if (c.tuck < 0.5) {
+      pen.toWorld(pose, (hu + 0.012) * dir, hv - 0.008, at);
       pen.spot(at.x, at.y, "●", GLINT, EYE, c.depth);
     }
   },
