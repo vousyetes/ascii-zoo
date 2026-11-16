@@ -1,6 +1,6 @@
 import { mountTweakPanel, type Control, type ControlKit } from "./panel";
 import { ANIMALS, AnimalEngine, SHARED_CONTROLS, type AnimalKey, type KnobSpec, type Tuning } from "./src";
-import { mountChoices } from "./ui";
+import { ICONS, mountSidebar } from "./sidebar";
 
 /**
  * Prefix for everything this app keeps in localStorage. It shares a domain with the older
@@ -63,9 +63,9 @@ window.addEventListener("storage", (e) => {
 
 // ── animal choices: every animal in the top bar, each with a dot of its own colour ──
 
-mountChoices(
-  document.querySelector<HTMLElement>(".choices")!,
-  KEPT.map((key) => ({ value: key, label: FR[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})` })),
+mountSidebar(
+  document.querySelector<HTMLElement>(".side")!,
+  KEPT.map((key) => ({ value: key, label: FR[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})`, icon: ICONS[key] ?? ["  ?  ", "     "] })),
   animal,
   (value) => {
     animal = value as AnimalKey;

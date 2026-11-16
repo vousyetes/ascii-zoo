@@ -27,9 +27,11 @@
       </filter>
     </svg>
 
-    <div class="top-bar">
-      <div class="choices glass" role="radiogroup" aria-label="Animal"></div>
-    </div>
+    <button class="side-toggle" type="button" aria-expanded="false" aria-controls="side">[ animaux ]</button>
+    <aside class="side" id="side" aria-label="Animaux">
+      <p class="side-label">animaux <span class="side-count"></span></p>
+      <div class="side-list" role="radiogroup" aria-label="Animal"></div>
+    </aside>
 
     <div class="aurora" aria-hidden="true"></div>
     <header class="vye-title">

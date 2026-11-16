@@ -1,0 +1,21 @@
+// Vérifie la barre latérale : node scripts/side-check.mjs (serveur sur 5199, CHROME=...)
+import { createRequire } from "node:module";
+const require = createRequire("/Users/vousyetes/.npm/_npx/9833c18b2d85bc59/node_modules/");
+const { chromium } = require("playwright");
+const b = await chromium.launch({ executablePath: process.env.CHROME || undefined });
+const errs = [];
+const d = await b.newPage({ viewport: { width: 1440, height: 810 } });
+d.on("pageerror", (e) => errs.push(String(e).slice(0, 160)));
+await d.goto("http://localhost:5199/?animal=rhino");
+await d.waitForTimeout(3500);
+await d.screenshot({ path: "/tmp/side-d.png" });
+const m = await b.newPage({ viewport: { width: 540, height: 960 } });
+m.on("pageerror", (e) => errs.push(String(e).slice(0, 160)));
+await m.goto("http://localhost:5199/?animal=seahorse");
+await m.waitForTimeout(3000);
+await m.screenshot({ path: "/tmp/side-m1.png" });
+await m.click(".side-toggle");
+await m.waitForTimeout(600);
+await m.screenshot({ path: "/tmp/side-m2.png" });
+await b.close();
+console.log(errs.length ? errs : "pas d'erreur");

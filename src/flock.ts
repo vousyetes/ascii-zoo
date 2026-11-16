@@ -29,6 +29,8 @@ export interface Creature {
   heading: number;
   /** Personal deviation from the course, -1 → 1 (scaled by tuning.spread). */
   bias: number;
+  /** Own heading offset from the course (0 follows the stream, pi runs against it, +-pi/2 crosses it). */
+  dirOffset: number;
   startledUntil: number;
   /** Removed from the flock; anyone holding a reference should let go. */
   gone: boolean;
@@ -48,6 +50,8 @@ export const SHARED_TUNING = {
   sway: 0.04,
   /** How far each individual's own course can differ from the stream's, radians. */
   spread: 0.06,
+  /** Share of the animals that do not follow the stream: they run against it or across it. 0 is a calm single file. */
+  crossflow: 0.5,
   /** Size multiplier. */
   size: 1,
   /** Depth of the farthest individuals (1 = everyone equally near). */
@@ -100,6 +104,7 @@ export const SHARED_CONTROLS: { movement: KnobSpec[]; look: KnobSpec[] } = {
     { key: "speed", label: "Speed", min: 0.1, max: 3, step: 0.05, hint: "How fast they travel." },
     { key: "sway", label: "Sway", min: 0, max: 0.6, step: 0.01, hint: "How much the whole group slowly drifts left and right off course. 0 is a dead-straight line." },
     { key: "spread", label: "Spread", min: 0, max: 0.8, step: 0.01, hint: "How far each one's own path can stray from the group's. 0 means everyone keeps exactly the same line." },
+    { key: "crossflow", label: "Cross-flow", min: 0, max: 1, step: 0.01, hint: "How many go against the stream or across it, so they cross paths. 0 means everyone goes the same way." },
     { key: "size", label: "Size", min: 0.3, max: 2.5, step: 0.05, hint: "How big they are." },
     { key: "farthest", label: "Farthest depth", min: 0.1, max: 1, step: 0.01, hint: "How small and faint the farthest ones get. 1 makes them all equally close." },
     { key: "farBias", label: "Far bias", min: 0.3, max: 3, step: 0.05, hint: "How many sit far away versus close. Higher puts more of them in the distance." },
@@ -183,6 +188,8 @@ export class Flock<C extends Creature = Creature> {
   base = 120;
   /** Scratch acceleration the steering helpers add into. */
   readonly acc = { x: 0, y: 0 };
+  /** The creature being updated: its own heading offset shapes course and heading. */
+  cur: Creature | null = null;
 
   private nextId = 1;
 
@@ -200,7 +207,8 @@ export class Flock<C extends Creature = Creature> {
   /** Course in radians (screen space, y down). */
   get course() {
     const k = this.tuning;
-    return k.corner ? Math.atan2(-this.height, this.width) : (-k.direction * Math.PI) / 180;
+    const base = k.corner ? Math.atan2(-this.height, this.width) : (-k.direction * Math.PI) / 180;
+    return base + (this.cur?.dirOffset ?? 0);
   }
 
   /** The course with the whole stream's slow sway applied. */
@@ -244,7 +252,9 @@ export class Flock<C extends Creature = Creature> {
       if (d > STARTLE_RADIUS) continue;
       const strength = 1 - d / STARTLE_RADIUS;
       if (this.animal.startle) {
+        this.cur = c;
         this.animal.startle(c, dx / d, dy / d, strength, this);
+        this.cur = null;
       } else {
         const k = strength * 420 * c.depth;
         c.vx += (dx / d) * k;
@@ -262,7 +272,11 @@ export class Flock<C extends Creature = Creature> {
       c.span = this.base * c.depth * this.tuning.size;
     }
     this.animal.prepare?.(this, dt);
-    for (const c of this.creatures) this.animal.update(c, this, dt);
+    for (const c of this.creatures) {
+      this.cur = c;
+      this.animal.update(c, this, dt);
+    }
+    this.cur = null;
   }
 
   /** Add or remove individuals until the population matches the tuning. */
@@ -278,7 +292,9 @@ export class Flock<C extends Creature = Creature> {
         // Seeding (or growing the flock): drop it in anywhere so the screen fills at once.
         c.x = rand(0, this.width);
         c.y = rand(0, this.height);
+        this.cur = c;
         this.animal.enter?.(c, this);
+        this.cur = null;
       }
       this.insert(c);
     }
@@ -302,14 +318,27 @@ export class Flock<C extends Creature = Creature> {
       vy: 0,
       heading: 0,
       bias: 0,
+      dirOffset: this.rollDirection(),
       startledUntil: 0,
       gone: false,
     };
     base.depth = this.depthOf(base.roll);
     base.span = this.base * base.depth * this.tuning.size;
     const c = this.animal.create(base, this);
+    this.cur = c;
     this.reenter(c);
+    this.cur = null;
     return c;
+  }
+
+  /** Most follow the stream, some run against it, some cross it. */
+  private rollDirection() {
+    const cf = this.tuning.crossflow ?? 0;
+    const r = Math.random();
+    const jitter = rand(-0.3, 0.3) * cf;
+    if (r < cf * 0.55) return Math.PI + jitter;
+    if (r < cf) return (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2) + jitter;
+    return jitter * 0.4;
   }
 
   /** Bring a creature back in from the upstream edges, spread evenly across the flow. */
