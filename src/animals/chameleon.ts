@@ -6,7 +6,7 @@
  * une à une en balançant le corps. Au clic : flash blanc éclatant, puis il file une seconde.
  */
 import { SHARED_TUNING, type Animal, type Creature } from "../flock";
-import { INK_DARK, INK_SHIMMER, ink, type RGB } from "../ink";
+import { INK_DARK, INK_SCALE, INK_SHIMMER, ink, type RGB } from "../ink";
 import { frac, rand, TAU } from "../math";
 import { inEllipse, seg, toSegment } from "./shapes";
 
@@ -114,6 +114,8 @@ export const chameleon: Animal<Chameleon> = {
     flock.move(c, dt, flock.cruise(c) * 3);
     if (flock.passed(c)) flock.reenter(c);
     c.heading = course;
+    // Toujours debout : il regarde du côté où il va (avec un peu d'hystérésis), il ne pivote jamais.
+    if (Math.abs(c.vx) > 3) c.flip = c.vx > 0 ? 1 : -1;
     c.gait += dt * 0.9 * k.step * boost;
     c.eye += dt * 1.3;
     c.flash = Math.max(0, c.flash - dt * 0.8);
@@ -131,7 +133,7 @@ export const chameleon: Animal<Chameleon> = {
     const time = flock.time;
     const f = c.flip;
     // Balancement avant/arrière : le corps tangue avec la marche.
-    const pose = { x: c.x, y: c.y, heading: c.heading + 0.05 * f * Math.sin(c.gait * 0.5), span: S, depth: c.depth, id: c.id };
+    const pose = { x: c.x, y: c.y, heading: (f > 0 ? 0 : Math.PI) + 0.05 * Math.sin(c.gait * 0.5), span: S, depth: c.depth, id: c.id };
     const at = { x: 0, y: 0 };
 
     // Queue : spirale qui se resserre et se desserre doucement.
@@ -145,52 +147,31 @@ export const chameleon: Animal<Chameleon> = {
       ty[i] = 0.04 + r * Math.sin(a);
     }
 
-    // Queue : trait fin continu qui s'affine, tracé en segments d'une cellule.
-    for (let i = 0; i < TAIL_N; i++) {
-      const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
-      const m = 1.25 - 0.5 * (i / TAIL_N);
-      const tc: RGB = [Math.min(255, r * m), Math.min(255, g * m), Math.min(255, b * m)];
-      pen.lineBody(pose, tx[i], ty[i] * f, tx[i + 1], ty[i + 1] * f, tc);
-    }
-
-    // Langue : jaillit toutes les 6 à 10 s selon l'individu, ligne fine et renflement.
+    // Langue : jaillit toutes les 6 à 10 s selon l'individu.
     const per = 6 + 4 * frac(c.phase * 7.3);
     const tp = ((time + c.phase * 20) % per) / per;
-    if (tp < 0.07) {
-      const e = Math.sin((tp / 0.07) * Math.PI);
-      const tipU = 0.4 + 0.2 * e;
-      pen.lineBody(pose, 0.39, 0.0 * f, tipU, -0.005 * f, [255, 130, 150]);
-      pen.lineBody(pose, tipU, -0.005 * f, tipU + 0.012, -0.005 * f, [255, 90, 120], "o");
-    }
+    const tongue = tp < 0.07 ? Math.sin((tp / 0.07) * Math.PI) : 0;
 
-    // Pattes : une seule levée à la fois. Celles de l'autre flanc, plus sombres, passent derrière.
+    // Pattes : une seule levée à la fois. Articulations calculées une fois, dessinées dans le sampler.
     const LEGS = [
       [0.12, 0, 1],
       [-0.09, 1, 1],
       [0.09, 2, 0.75],
       [-0.12, 3, 0.75],
     ];
-    for (const [hu, i, dim] of LEGS) {
+    const joint = new Float32Array(LEGS.length * 6);
+    LEGS.forEach(([hu, i], n) => {
       const m = frac(c.gait / TAU + i * 0.25);
       const swing = m < 0.25;
       const lift = swing ? Math.sin((m / 0.25) * Math.PI) : 0;
       const reach = swing ? -0.06 + 0.12 * (m / 0.25) : 0.06 - 0.12 * ((m - 0.25) / 0.75);
-      const hipY = 0.06;
-      const kneeU = hu + reach * 0.3 + (hu > 0 ? 0.05 : -0.05);
-      const kneeY = 0.17 - 0.05 * lift;
-      const footU = hu + reach;
-      const footY = 0.32 - 0.07 * lift;
-      const [r, g, b] = skin(c, time, k, -hu);
-      const lc: RGB = [r * dim, g * dim, b * dim];
-      // Chaque segment est doublé (léger décalage) pour épaissir la patte.
-      for (const d of [0]) {
-        pen.lineBody(pose, hu + d, hipY * f, kneeU + d, kneeY * f, lc);
-        pen.lineBody(pose, kneeU + d, kneeY * f, footU + d, footY * f, lc);
-      }
-      // Pince : deux doigts opposés, un vers l'avant, un vers l'arrière.
-      pen.lineBody(pose, footU, footY * f, footU + 0.06, (footY + 0.025) * f, lc, "<");
-      pen.lineBody(pose, footU, footY * f, footU - 0.05, (footY + 0.025) * f, lc, ">");
-    }
+      joint[n * 6] = hu;
+      joint[n * 6 + 1] = 0.07;
+      joint[n * 6 + 2] = hu + reach * 0.3 + (hu > 0 ? 0.05 : -0.05);
+      joint[n * 6 + 3] = 0.19 - 0.05 * lift;
+      joint[n * 6 + 4] = hu + reach;
+      joint[n * 6 + 5] = 0.3 - 0.07 * lift;
+    });
 
     // Éclaircit une couleur (même teinte, plus lumineuse) : m > 1 vers le blanc, m < 1 vers le sombre.
     const tone = (r: number, g: number, b: number, m: number) =>
@@ -208,6 +189,36 @@ export const chameleon: Animal<Chameleon> = {
         toSegment(u, y, 0.3, -0.02, 0.4, 0.0) < 0.022 * (1 - seg.t * 0.8) || // museau effilé
         toSegment(u, y, 0.29, -0.08, 0.12, -0.19) < 0.02 * (1 - seg.t * 0.95) || // casque pointu fin
         inEllipse(u, y, 0.27, -0.08, 0.04, 0.025); // arcade
+      // Queue : spirale pleine qui s'affine, sur sa boite englobante.
+      if (u < -0.2 && u > -0.55 && y > -0.14 && y < 0.24) {
+        for (let i = 0; i < TAIL_N; i++) {
+          const d = toSegment(u, y, tx[i], ty[i], tx[i + 1], ty[i + 1]);
+          if (d < 0.024 * (1 - 0.65 * (i / TAIL_N))) {
+            const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
+            return tone(r, g, b, i % 2 ? 1.05 : 0.8);
+          }
+        }
+      }
+      // Pattes : deux segments pleins, pince à deux doigts, celles du fond plus sombres.
+      if (y > 0.02 && y < 0.34) {
+        for (let n = 0; n < LEGS.length; n++) {
+          const j = n * 6;
+          const dim = LEGS[n][2];
+          const d1 = toSegment(u, y, joint[j], joint[j + 1], joint[j + 2], joint[j + 3]);
+          const d2 = d1 < 0.02 ? 0 : toSegment(u, y, joint[j + 2], joint[j + 3], joint[j + 4], joint[j + 5]);
+          const d3 = toSegment(u, y, joint[j + 4], joint[j + 5], joint[j + 4] + 0.06, joint[j + 5] + 0.02);
+          const d4 = toSegment(u, y, joint[j + 4], joint[j + 5], joint[j + 4] - 0.05, joint[j + 5] + 0.02);
+          if (d1 < 0.02 || d2 < 0.017 || d3 < 0.011 || d4 < 0.011) {
+            const [r, g, b] = skin(c, time, k, -LEGS[n][0]);
+            return tone(r, g, b, 0.62 * dim);
+          }
+        }
+      }
+      // Langue : fine, avec un renflement au bout.
+      if (tongue > 0.01) {
+        const tipU = 0.4 + 0.22 * tongue;
+        if (toSegment(u, y, 0.39, 0.005, tipU, 0.0) < 0.007 || Math.hypot(u - tipU, y) < 0.016) return ink(out, 255, 120, 150, INK_SCALE);
+      }
       let spine = false;
       if (!inBody && y < -0.05 && y > -0.2 && u > -0.22 && u < 0.15) {
         for (const su of SPINES) {
