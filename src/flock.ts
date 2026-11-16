@@ -31,6 +31,10 @@ export interface Creature {
   bias: number;
   /** Own heading offset from the course (0 follows the stream, pi runs against it, +-pi/2 crosses it). */
   dirOffset: number;
+  /** Fixed rolls behind dirOffset, so the cross-flow knob (or the calm switch) acts live. */
+  dirRoll: number;
+  dirJit: number;
+  dirSide: 1 | -1;
   startledUntil: number;
   /** Removed from the flock; anyone holding a reference should let go. */
   gone: boolean;
@@ -273,6 +277,7 @@ export class Flock<C extends Creature = Creature> {
     }
     this.animal.prepare?.(this, dt);
     for (const c of this.creatures) {
+      c.dirOffset = this.offsetFor(c);
       this.cur = c;
       this.animal.update(c, this, dt);
     }
@@ -318,12 +323,16 @@ export class Flock<C extends Creature = Creature> {
       vy: 0,
       heading: 0,
       bias: 0,
-      dirOffset: this.rollDirection(),
+      dirOffset: 0,
+      dirRoll: Math.random(),
+      dirJit: rand(-0.3, 0.3),
+      dirSide: Math.random() < 0.5 ? 1 : -1,
       startledUntil: 0,
       gone: false,
     };
     base.depth = this.depthOf(base.roll);
     base.span = this.base * base.depth * this.tuning.size;
+    base.dirOffset = this.offsetFor(base);
     const c = this.animal.create(base, this);
     this.cur = c;
     this.reenter(c);
@@ -332,12 +341,11 @@ export class Flock<C extends Creature = Creature> {
   }
 
   /** Most follow the stream, some run against it, some cross it. */
-  private rollDirection() {
+  private offsetFor(c: Creature) {
     const cf = this.tuning.crossflow ?? 0;
-    const r = Math.random();
-    const jitter = rand(-0.3, 0.3) * cf;
-    if (r < cf * 0.55) return Math.PI + jitter;
-    if (r < cf) return (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2) + jitter;
+    const jitter = c.dirJit * cf;
+    if (c.dirRoll < cf * 0.55) return Math.PI + jitter;
+    if (c.dirRoll < cf) return c.dirSide * (Math.PI / 2) + jitter;
     return jitter * 0.4;
   }
 

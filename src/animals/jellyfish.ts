@@ -16,7 +16,7 @@
  *   snow       glowing specks drifting slowly through the water
  */
 import { SHARED_TUNING, type Animal, type Creature, type Flock } from "../flock";
-import { INK_GLOW, INK_LIT, ink, type RGB } from "../ink";
+import { INK_LIT, ink, type RGB } from "../ink";
 import { angleDiff, clamp, frac, hash3, rand, smoothstep, TAU } from "../math";
 import type { Pen, Pose } from "../renderer";
 
@@ -49,16 +49,17 @@ const DEFAULTS = {
 // Magenta: every animal has its own colour, and blue belongs to the butterflies.
 const CROWN: RGB = [255, 168, 230];
 const BODY: RGB = [232, 56, 182];
-const RIM: RGB = [255, 200, 240];
-const LOBES: RGB = [255, 214, 244];
-const DOTS: RGB = [255, 240, 250];
+const RIM: RGB = [255, 130, 214];
+const LOBES: RGB = [255, 130, 214];
+const DOTS: RGB = [255, 170, 226];
 const FRILL: RGB = [255, 214, 240];
 const CORE: RGB = [204, 56, 172];
 const TENTACLE: RGB = [232, 100, 204];
+const VIOLET: RGB = [138, 116, 255];
 const SNOW: RGB = [255, 170, 226];
 
 /** Screen area per speck of marine snow, px². */
-const SNOW_AREA = 6000;
+const SNOW_AREA = 4500;
 
 const at = { x: 0, y: 0 };
 const bt = { x: 0, y: 0 };
@@ -78,8 +79,8 @@ export const jellyfish: Animal<Jelly> = {
       { key: "tentacles", label: "Arm length", min: 0, max: 2.5, step: 0.05, hint: "Length of the frilly arms and the thin tentacles." },
     ]],
   ],
-  area: 95000,
-  scale: 1.6,
+  area: 70000,
+  scale: 1.5,
   speed: 55,
   trail: { light: [200, 80, 170], dark: [255, 130, 214] },
 
@@ -87,10 +88,10 @@ export const jellyfish: Animal<Jelly> = {
 
   update(j, flock, dt) {
     const k = flock.tuning as typeof DEFAULTS;
-    j.phase += dt * TAU * 0.6 * k.pulseRate * (0.9 + 0.2 * j.roll);
+    j.phase += dt * TAU * 0.4 * k.pulseRate * (0.9 + 0.2 * j.roll);
     const p = frac(j.phase / TAU);
-    // A quick squeeze, then a slow relax.
-    j.squeeze = p < 0.22 ? smoothstep(0, 0.22, p) : 1 - smoothstep(0.22, 1, p);
+    // Contraction douce, puis longue detente.
+    j.squeeze = p < 0.3 ? smoothstep(0, 0.3, p) : 1 - smoothstep(0.3, 1, p);
 
     // Lazily turn toward the course; jellies can't steer hard.
     const want = flock.heading + j.bias * k.spread;
@@ -101,20 +102,24 @@ export const jellyfish: Animal<Jelly> = {
     const cruise = flock.cruise(j);
     const acc = flock.begin();
     // Thrust only while squeezing; drag the rest of the time, so it coasts.
-    const thrust = p < 0.22 ? 6.2 * cruise * k.pulsePower : 0;
+    const thrust = p < 0.3 ? 4.2 * cruise * k.pulsePower : 0;
     acc.x += Math.cos(j.heading) * thrust - j.vx * 1.4;
     acc.y += Math.sin(j.heading) * thrust - j.vy * 1.4;
+    // Balancement lateral doux, perpendiculaire au cap.
+    const lat = Math.sin(flock.time * 0.7 + j.id * 2.3) * 5 * cruise;
+    acc.x -= Math.sin(j.heading) * lat;
+    acc.y += Math.cos(j.heading) * lat;
     flock.separate(j, k.separation, 0.5);
     flock.move(j, dt, cruise * 3);
     if (flock.passed(j, j.span * 1.4)) flock.reenter(j);
   },
 
-  startle(j, _dx, _dy, strength, flock) {
-    // A hard pulse right now that surges it ahead on the course it's already on (no turning).
-    j.phase = Math.floor(j.phase / TAU) * TAU + TAU;
-    const boost = 260 * strength * j.depth;
-    j.vx += Math.cos(j.heading) * boost;
-    j.vy += Math.sin(j.heading) * boost;
+  startle(j, dx, dy, strength, flock) {
+    // Sursaut : contraction forte, propulsion douce a l'oppose du clic, puis flottaison.
+    j.phase = Math.floor(j.phase / TAU) * TAU + TAU * 0.3;
+    const boost = 150 * strength * j.depth;
+    j.vx += dx * boost;
+    j.vy += dy * boost;
     j.startledUntil = flock.time + 0.8;
   },
 
@@ -138,91 +143,75 @@ function drawJelly(j: Jelly, pen: Pen, flock: Flock<Jelly>) {
   const pose: Pose = { x: j.x, y: j.y, heading: j.heading, span: S, depth: j.depth, id: j.id };
   const len = k.tentacles;
   const base = pen.fogFor(j.depth);
-  const a = 0.32 * (1 + 0.14 * sq);
-  const b = 0.3 * (1 - 0.2 * sq);
-  const u0 = -0.04;
+  // Cloche petite et fine : se resserre et s'allonge a la pulsation.
+  const a = 0.27 * (1 + 0.16 * sq);
+  const b = 0.27 * (1 - 0.22 * sq);
+  const u0 = -0.02;
   const sway = clamp(-j.turn * 0.5, -0.5, 0.5);
   const flash = pulseGlow(j) * k.pulseGlow;
+  const drift = Math.sin(t * 0.5 + j.id * 1.7);
 
-  // Hair-thin tentacles: faint threads, roots toward the middle of the rim.
-  for (let n = 0; n < 8; n++) {
-    const v0 = (n / 7 - 0.5) * 2 * b * 0.6;
+  // Tentacules tres fins et nombreux, qui traînent en vagues.
+  const nt = 18;
+  for (let n = 0; n < nt; n++) {
+    const v0 = (n / (nt - 1) - 0.5) * 2 * b * 0.85;
     let pu = u0 - 0.02;
     let pv = v0;
-    const segs = 14;
-    const length = 1.5 * len * (0.75 + 0.35 * hash3(j.id, n, 4));
+    const segs = 16;
+    const length = 1.3 * len * (0.65 + 0.5 * hash3(j.id, n, 4));
+    const ph = n * 0.7 + hash3(j.id, n, 5) * 2;
     for (let i = 1; i <= segs; i++) {
       const f = i / segs;
-      const u = u0 - 0.02 - f * length * (1 - 0.12 * sq);
-      const v = v0 * (1 - 0.3 * f) + 0.04 * Math.sin(j.phase - f * 3.5 + n * 1.3) * f + sway * f * f * 0.4;
+      const u = u0 - 0.02 - f * length * (1 - 0.1 * sq);
+      const v = v0 * (1 - 0.2 * f) + (0.05 * Math.sin(t * 0.9 - f * 4 + ph) + 0.03 * drift) * f + sway * f * f * 0.4;
       pen.toWorld(pose, pu, pv, at);
       pen.toWorld(pose, u, v, bt);
-      pen.line(at.x, at.y, bt.x, bt.y, TENTACLE, j.depth, undefined, Math.min(0.95, base + 0.45 + 0.35 * f));
+      pen.line(at.x, at.y, bt.x, bt.y, TENTACLE, j.depth, undefined, Math.min(0.95, base + 0.22 + 0.4 * f));
       pu = u;
       pv = v;
     }
   }
 
-  // Oral arms: frilly ribbons that twist as they trail, bright ruffled edges around a dim core.
-  for (let n = 0; n < 4; n++) {
-    const v0 = (n / 3 - 0.5) * 0.11;
-    const segs = 26;
-    const length = 1.05 * len * (0.8 + 0.3 * hash3(j.id, n, 7));
+  // Bras oraux : rubans fins qui ondulent.
+  for (let n = 0; n < 3; n++) {
+    const v0 = (n / 2 - 0.5) * 0.08;
+    const segs = 22;
+    const length = 0.85 * len * (0.8 + 0.3 * hash3(j.id, n, 7));
     for (let i = 1; i <= segs; i++) {
       const f = i / segs;
       const u = u0 - f * length;
-      const v = v0 * (1 - 0.4 * f) + 0.05 * Math.sin(j.phase * 0.9 - f * 4.5 + n * 1.7) * f + sway * f * 0.25;
-      // The twist: the ribbon's width swings through zero and back as it spirals.
-      const w = 0.055 * (1 - 0.5 * f) * Math.cos(f * 9 + n * 1.3 + t * 0.6);
-      const fog = Math.min(0.95, base + 0.3 * f);
-      pen.toWorld(pose, u, v, at);
-      pen.dot(at.x, at.y, i % 3 ? ":" : "|", CORE, j.depth, Math.min(0.95, fog + 0.15));
+      const v = v0 + 0.06 * Math.sin(t * 0.8 - f * 4.5 + n * 1.7) * f + sway * f * 0.25;
+      const w = 0.018 * (1 - 0.6 * f) * Math.cos(f * 7 + n * 1.3 + t * 0.5);
+      const fog = Math.min(0.95, base + 0.15 + 0.3 * f);
       for (const side of [-1, 1]) {
         pen.toWorld(pose, u, v + w * side, at);
-        pen.dot(at.x, at.y, "{}~§"[(i + n + (side > 0 ? 1 : 0)) % 4], FRILL, j.depth, fog);
+        pen.dot(at.x, at.y, "{}~"[(i + n + (side > 0 ? 1 : 0)) % 3], FRILL, j.depth, fog);
       }
     }
     pen.toWorld(pose, u0 - length, v0, at);
-    pen.shed(at.x, at.y, 0.015 * j.depth);
+    pen.shed(at.x, at.y, 0.01 * j.depth);
   }
 
-  // A faint halo where the glow spills into the water, brighter and wider while the pulse glows.
+  // Cloche translucide : seulement le bord ondulant, quelques nervures et des points.
   const out = pen.ink;
-  const h = 1.3 * (1 + 0.18 * flash);
-  pen.shape(pose, 0.32 * h + 0.1, (u, v) => {
-    const r = Math.hypot((u - u0) / (a * h), v / (b * h));
-    return r < 1 && u > u0 - 0.08 && ink(out, ...RIM, INK_GLOW, ".");
-  }, { fog: clamp(base + 0.55 - 0.3 * flash, 0, 0.95) });
-
-  // The bell, lit from within.
-  pen.shape(pose, 0.42, (u, v) => {
+  pen.shape(pose, 0.3, (u, v) => {
     const du = (u - u0) / a;
     const dv = v / b;
     const r2 = du * du + dv * dv;
-    const margin = u0 - 0.04 * dv * dv;
+    const wob = 0.035 * Math.sin(dv * 7 + t * 1.6) * (1 + sq);
+    const margin = u0 - 0.03 * dv * dv + wob;
     if (r2 > 1 || u < margin) {
-      // A row of scalloped lobes hanging just off the margin.
-      if (Math.abs(dv) > 1 || u > margin || u < margin - 0.04) return false;
-      const lobe = 0.04 * Math.sin(frac((dv + 1) * 5.5) * Math.PI);
+      if (Math.abs(dv) > 1 || u > margin || u < margin - 0.03) return false;
+      const lobe = 0.03 * Math.sin(frac((dv + 1) * 4.5) * Math.PI);
       return u > margin - lobe && ink(out, ...LOBES, INK_LIT, "o");
     }
     const r = Math.sqrt(r2);
-    if (r > 0.88) return ink(out, ...RIM, INK_LIT, ":;");
-    const th = Math.atan2(dv, du);
-    // A dusting of white dots over the top of the dome.
-    if (du > 0.3) {
-      const gu = Math.round(du * 11);
-      const gv = Math.round(dv * 13);
-      const near = Math.hypot(du * 11 - gu, dv * 13 - gv) < 0.32;
-      if (near && hash3(gu, gv, j.id) > 0.45) return ink(out, ...DOTS, INK_LIT, ".'");
-    }
-    // Radial ribs, brighter toward the rim.
-    if (r > 0.35 && frac((th / Math.PI) * 6) < 0.1) return ink(out, ...RIM, INK_LIT, "|");
-    // Glow: brightest at the crown and toward the rim, a little dimmer in the middle.
-    const glow = 0.75 + 0.25 * Math.max(clamp(du, 0, 1), r * r);
-    const c = mix(BODY, CROWN, clamp(du, 0, 1) * 0.8);
-    return ink(out, c[0] * glow, c[1] * glow, c[2] * glow, INK_LIT, " .");
-  }, { light: (0.92 + 0.18 * sq) * (1 + 0.6 * flash) });
+    if (r > 0.9) return ink(out, ...RIM, INK_LIT, ":;");
+    if (r > 0.4 && frac((Math.atan2(dv, du) / Math.PI) * 4) < 0.07) return ink(out, ...VIOLET, INK_LIT, "|");
+    if (du > 0.2 && hash3(Math.round(du * 8), Math.round(dv * 9), j.id) > 0.8) return ink(out, ...DOTS, INK_LIT, ".'");
+    // Voile tres leger (sans bloc plein) : un point sur quatre.
+    return hash3(Math.round(u * 90), Math.round(v * 90), j.id) > 0.6 && ink(out, ...mix(BODY, VIOLET, 0.3 + 0.3 * Math.abs(dv)), INK_LIT, ".");
+  }, { light: (0.7 + 0.1 * sq) * (1 + 0.4 * flash), fog: clamp(base - 0.05 - 0.15 * flash, 0, 0.95) });
 }
 
 /** Marine snow: glowing specks that drift slowly up through the water and twinkle. */

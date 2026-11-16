@@ -26,8 +26,8 @@ interface Snail extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
-  density: 0.9,
+  detail: 3.2,
+  density: 1.0,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.5,
@@ -52,10 +52,10 @@ const EYE_FILL: RGB = [255, 111, 97];
 /** Spirale d'or : le rayon est multiplie par phi tous les quarts de tour. */
 const PHI = (1 + Math.sqrt(5)) / 2;
 const B = Math.log(PHI) / (Math.PI / 2);
-const SHELL_R = 0.25;
+const SHELL_R = 0.2;
 const SHELL_U = -0.06;
 /** Rayon de depart a theta = 0 : apres 4 tours la spirale atteint SHELL_R. */
-const A = SHELL_R / Math.exp(B * 4 * TAU * 0.25);
+const A = SHELL_R / Math.exp(B * 7 * TAU * 0.25);
 
 const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
@@ -72,7 +72,7 @@ export const snail: Animal<Snail> = {
     ]],
   ],
   area: 30000,
-  scale: 0.7,
+  scale: 1.0,
   speed: 14,
   trail: { light: [92, 170, 215], dark: [150, 220, 255] },
 
@@ -112,9 +112,9 @@ export const snail: Animal<Snail> = {
     const pose = { x: c.x, y: c.y, heading: c.heading, span: S, depth: c.depth, id: c.id };
     const at = { x: 0, y: 0 };
 
-    const front = 0.46 - 0.3 * hide;
+    const front = 0.44 - 0.3 * hide;
     const tail = -0.5 + 0.3 * hide;
-    const amp = 0.014 * (1 - hide);
+    const amp = 0.012 * (1 - hide);
 
     // Bave : un point tous les 6 px le long du chemin, rejoue chaque image avec une force qui
     // decroit avec l'age. Ca donne un filet etroit et continu au lieu d'un disque qui s'etale.
@@ -125,25 +125,24 @@ export const snail: Animal<Snail> = {
       if (!last || Math.hypot(at.x - last[0], at.y - last[1]) > 400) p.length = 0;
       if (!last || Math.hypot(at.x - last[0], at.y - last[1]) >= 6) p.push([at.x, at.y]);
       if (p.length > 70) p.shift();
-      for (let i = 0; i < p.length; i++) pen.shed(p[i][0], p[i][1], 0.03 * k.slime * (0.3 + 0.7 * (i / p.length)));
+      for (let i = 0; i < p.length; i++) pen.shed(p[i][0], p[i][1], 0.016 * k.slime * (0.3 + 0.7 * (i / p.length)));
     }
 
     // Tentacules : deux grands oculaires, deux petits, qui rentrent avec le corps.
     if (ext > 0.12) {
-      const bigs: [number, number][] = [[0.34, 1], [0.34, -1]];
+      const bigs: [number, number][] = [[0.3, 1], [0.3, -1]];
       for (const [len, side] of bigs) {
         const w = Math.sin(c.sway + side * 1.7) * 0.04;
         const u1 = front + len * ext * 0.9;
         const v1 = (0.05 + 0.1 * ext) * side + w;
-        pen.lineBody(pose, front - 0.04, 0.035 * side, front + 0.05, v1 * 0.55, SKIN_HEAD);
+        pen.lineBody(pose, front - 0.04, 0.02 * side, front + 0.05, v1 * 0.55, SKIN_HEAD);
         pen.lineBody(pose, front + 0.05, v1 * 0.55, u1, v1, SKIN_HEAD);
-        pen.lineBody(pose, front + 0.05, v1 * 0.55 + 0.018, u1, v1 + 0.018, SKIN_HEAD);
         pen.toWorld(pose, u1, v1, at);
         pen.spot(at.x, at.y, "●", GLOW, EYE_FILL, c.depth);
       }
       for (const side of [-1, 1]) {
         const w = Math.sin(c.sway * 1.3 + side) * 0.02;
-        pen.lineBody(pose, front, 0.05 * side, front + 0.1 * ext, (0.08 + 0.02 * ext) * side + w, SKIN_HEAD);
+        pen.lineBody(pose, front, 0.03 * side, front + 0.06 * ext, (0.05 + 0.015 * ext) * side + w, SKIN_HEAD);
       }
     }
 
@@ -157,16 +156,16 @@ export const snail: Animal<Snail> = {
         const turns = (Math.log(Math.max(r, 1e-4) / A) / B - theta) / TAU;
         const f = turns - Math.floor(turns);
         if (r < 0.02) return ink(out, ...SEAM, INK_DARK);
-        if (f < 0.07) return ink(out, ...SEAM, INK_DARK);
-        return f < 0.55 ? ink(out, ...SUN, INK_SCALE) : ink(out, ...CORAL, INK_SCALE);
+        if (f < 0.14) return ink(out, ...SEAM, INK_DARK);
+        return f < 0.57 ? ink(out, ...SUN, INK_SCALE) : ink(out, ...CORAL, INK_SCALE);
       }
       // Corps : pied ondulant, tete arrondie, degrade de la queue vers la tete.
       if (u < tail || u > front) return false;
       const ut = (u - tail) / (front - tail);
-      const half = 0.15 * Math.min(1, 0.12 + ut * 2.2) * (ut > 0.88 ? 1 - (ut - 0.88) * 4 : 1) * (0.5 + 0.5 * ext);
-      const off = amp * k.wave * Math.sin(u * 26 - c.gait * 3);
+      const half = 0.085 * Math.min(1, 0.12 + ut * 2.2) * (ut > 0.88 ? 1 - (ut - 0.88) * 4 : 1) * (0.5 + 0.5 * ext);
+      const off = amp * k.wave * Math.sin(u * 30 - c.gait * 3);
       const vv = v - off;
-      const bulge = 1 + 0.18 * Math.sin(u * 26 - c.gait * 3 + 1.2) * ext;
+      const bulge = 1 + 0.2 * Math.sin(u * 30 - c.gait * 3 + 1.2) * ext;
       if (Math.abs(vv) > half * bulge) return false;
       const col = mix(SKIN_TAIL, SKIN_HEAD, ut);
       // Bord du pied plus sombre, reflet clair sur le dos.

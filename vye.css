@@ -35,7 +35,7 @@ body::before {
 
 /* Titre : Archivo large, capitales, un mot en dégradé. */
 .vye-title { position: fixed; z-index: 5; left: 0; right: 0; top: 50%; translate: 0 -50%; text-align: center; pointer-events: none; padding: 0; }
-.vye-tag { position: absolute; left: 0; right: 0; bottom: 100%; margin: 0 0 14px; font: 400 12px "JetBrains Mono", monospace; letter-spacing: 0.06em; color: var(--muted); }
+.vye-tag { position: absolute; left: 256px; right: 0; bottom: 100%; margin: 0 0 14px; font: 400 12px "JetBrains Mono", monospace; letter-spacing: 0.06em; color: var(--muted); }
 .vye-title h1 {
   margin: 0; font-family: Archivo, sans-serif; font-weight: 800; font-stretch: 112%;
   font-size: clamp(26px, 6vw, 46px); line-height: 1; letter-spacing: -0.02em; text-transform: none; color: var(--text);
@@ -48,40 +48,76 @@ body::before {
 .tweaks-open { bottom: auto; top: 18px; }
 @media (max-width: 700px) { .tweaks-open { display: none; } }
 
-/* Barre latérale : sommaire numéroté façon vousyetes v3, avec une icône ASCII par animal. */
+/* Barre latérale : le sommaire vousyetes v3 (filet en degrade, etiquette mono, liste numerotee, filet actif),
+   adapte au moteur : chaque entree a sa cellule de grille avec une icone ASCII. */
 .side {
-  position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: 232px;
-  display: flex; flex-direction: column; padding: 22px 14px 18px 18px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.014)), rgba(4, 5, 10, 0.62);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: 256px;
+  display: flex; flex-direction: column; padding: 24px 16px 16px 20px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px) 0 0 / 100% 28px,
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012)),
+    rgba(4, 5, 10, 0.72);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border-right: 1px solid var(--glass-edge);
 }
-.side-label {
-  margin: 0 0 12px; padding-top: 12px; border-top: 3px solid transparent;
-  border-image: linear-gradient(100deg, #ffb067, #ff6f61 38%, #c86fd0 68%, #5cc8ff) 1;
-  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.1em; text-transform: lowercase; color: var(--muted);
+.side::before { /* coins HUD cyan, comme les cartes du site */
+  content: ""; position: absolute; top: 8px; right: 8px; width: 10px; height: 10px;
+  border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); opacity: 0.8;
 }
-.side-count { color: var(--text); }
-.side-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; display: grid; align-content: start; gap: 2px; }
+.side-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0 0 14px; padding-top: 12px; border-top: 3px solid transparent;
+  border-image: linear-gradient(100deg, #ffb067, #ff6f61 38%, #c86fd0 68%, #5cc8ff) 1;
+  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.1em; color: var(--muted);
+}
+.side-count { color: var(--text); font-size: 20px; font-weight: 700; letter-spacing: 0; }
+.side-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; display: grid; align-content: start; gap: 3px; }
 .side-list::-webkit-scrollbar { display: none; }
 .side-list button {
-  display: grid; grid-template-columns: 3.6em 1.7em minmax(0, 1fr); align-items: center; gap: 4px;
-  width: 100%; padding: 4px 6px 4px 8px; margin-left: -8px; border: 0; border-left: 2px solid transparent; border-radius: 0;
-  background: none; text-align: left; cursor: pointer; color: var(--muted);
-  font: 500 12px/1.3 "JetBrains Mono", monospace; letter-spacing: 0.02em;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  position: relative; display: grid; grid-template-columns: 60px 1.9em minmax(0, 1fr); grid-template-rows: auto auto;
+  column-gap: 8px; align-items: center; width: 100%; padding: 4px 4px 4px 0; border: 0; border-radius: 0; background: none;
+  text-align: left; cursor: pointer; color: var(--muted); transition: color 0.2s, background 0.2s;
+}
+.side-list button::before { /* le filet actif de v3 */
+  content: ""; position: absolute; left: -10px; top: 4px; bottom: 4px; width: 2px; background: var(--swatch);
+  box-shadow: 0 0 10px var(--swatch); transform: scaleY(0); transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.side-list .cell {
+  grid-row: 1 / 3; display: grid; place-items: center; width: 60px; height: 50px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 100% 8px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 8px 100%,
+    rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--glass-edge); border-radius: 2px; transition: border-color 0.2s, box-shadow 0.2s;
 }
 .side-list .ico {
-  margin: 0; font: 500 9px/1 "JetBrains Mono", monospace; white-space: pre; color: var(--swatch); opacity: 0.55;
-  transition: opacity 0.2s, text-shadow 0.2s;
+  margin: 0; font: 600 10.5px/1.05 "JetBrains Mono", monospace; letter-spacing: 0; white-space: pre; text-align: center;
+  color: var(--swatch); opacity: 0.55; transition: opacity 0.2s, text-shadow 0.2s;
 }
-.side-list .n { font-weight: 700; font-size: 11px; color: var(--muted); opacity: 0.7; }
-.side-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-list button:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
-.side-list button:hover .ico { opacity: 0.9; }
-.side-list button[aria-checked="true"] { color: var(--text); font-weight: 700; border-left-color: var(--swatch); background: linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent); }
-.side-list button[aria-checked="true"] .ico { opacity: 1; text-shadow: 0 0 10px var(--swatch); }
-.side-list button:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
+.side-list .n { align-self: end; font: 700 11px/1.4 "JetBrains Mono", monospace; color: var(--muted); opacity: 0.7; }
+.side-list .name { align-self: end; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 13px/1.4 "JetBrains Mono", monospace; }
+.side-list .sub { grid-column: 2 / 4; align-self: start; font: 500 11px/1.3 "JetBrains Mono", monospace; color: var(--muted); opacity: 0.75; }
+.side-list button:hover { color: var(--text); background: rgba(255, 255, 255, 0.035); }
+.side-list button:hover .ico { opacity: 0.95; }
+.side-list button[aria-checked="true"] { color: var(--text); background: linear-gradient(90deg, rgba(255, 255, 255, 0.07), transparent 85%); }
+.side-list button[aria-checked="true"]::before { transform: scaleY(1); }
+.side-list button[aria-checked="true"] .n { color: var(--swatch); opacity: 1; }
+.side-list button[aria-checked="true"] .name { font-weight: 800; }
+.side-list button[aria-checked="true"] .sub { opacity: 1; }
+.side-list button[aria-checked="true"] .cell { border-color: var(--swatch); box-shadow: 0 0 14px -2px var(--swatch), inset 0 0 12px -4px var(--swatch); }
+.side-list button[aria-checked="true"] .ico { opacity: 1; text-shadow: 0 0 8px var(--swatch); }
+.side-list button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+.side-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-edge); display: grid; gap: 8px; }
+.side-calm {
+  display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; cursor: pointer;
+  border: 1px solid var(--glass-edge); border-radius: 2px; background: rgba(255, 255, 255, 0.025);
+  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.08em; color: var(--muted); transition: border-color 0.2s, color 0.2s;
+}
+.side-calm .state { color: var(--cyan); }
+.side-calm:hover { border-color: var(--cyan); color: var(--text); }
+.side-calm[aria-pressed="true"] .state { color: var(--soleil); }
+.side-foot p { margin: 0; font: 400 11px "JetBrains Mono", monospace; color: var(--muted); opacity: 0.7; }
 
 .side-toggle {
   display: none; position: fixed; z-index: 31; top: 14px; left: 14px; padding: 8px 12px;
@@ -89,12 +125,13 @@ body::before {
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   font: 600 12px "JetBrains Mono", monospace; letter-spacing: 0.06em; color: var(--text); cursor: pointer;
 }
-.vye-title { padding-left: 232px; }
+.vye-title { padding-left: 256px; }
 
 @media (max-width: 700px) {
   .side { width: min(264px, 82vw); transform: translateX(-102%); transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); padding-top: 64px; }
   .side.open { transform: none; }
   .side-toggle { display: block; }
   .vye-title { padding-left: 0; }
+  .vye-tag { left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .side { transition: none; } }

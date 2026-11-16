@@ -1,7 +1,7 @@
 /**
  * Colibri : vol stationnaire devant des fleurs imaginaires, puis éclair d'un point à l'autre.
  *
- * Gros et peu nombreux pour rester lisible en vertical. Long bec droit et fin, petite tête,
+ * Petits, fins et peu nombreux. Long bec droit et fin, petite tête,
  * corps irisé vert-cyan, gorge qui passe du corail au rose selon l'angle, queue en éventail.
  * Les ailes battent trop vite pour être vues : deux éventails translucides qui vibrent.
  * Un clic proche le fait filer à l'opposé, puis il revient se mettre en stationnaire.
@@ -24,8 +24,8 @@ interface Hummingbird extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   fog: 0.2,
-  detail: 2.2,
-  density: 1.3,
+  detail: 3.2,
+  density: 0.6,
   sway: 0,
   spread: 0.5,
   farthest: 0.6,
@@ -64,10 +64,10 @@ export const hummingbird: Animal<Hummingbird> = {
       { key: "scare", label: "Frayeur", min: 0, max: 3, step: 0.05, hint: "Vitesse de fuite quand on clique près d'eux." },
     ]],
   ],
-  // Grand et rare : quelques colibris seulement, bien lisibles en 9:16.
-  area: 35000,
-  scale: 0.8,
-  max: 40,
+  // Petits et rares : une petite dizaine au plus, fins et lisibles.
+  area: 130000,
+  scale: 0.95,
+  max: 10,
   speed: 60,
   trail: { light: [40, 150, 120], dark: [126, 226, 168] },
 
@@ -83,33 +83,38 @@ export const hummingbird: Animal<Hummingbird> = {
     const k = flock.tuning as typeof DEFAULTS;
     const t = flock.time;
     const cruise = flock.cruise(h);
+    const W = flock.width, H = flock.height, m = h.span * 0.8;
+    const out = h.x < -m || h.x > W + m || h.y < -m || h.y > H + m;
     if (t >= h.until) {
       if (h.mode === "hover") {
-        // Éclair vers la prochaine fleur, globalement le long du parcours.
+        // Éclair vers une fleur imaginaire n'importe où à l'écran : direction libre.
+        const tx = rand(W * 0.08, W * 0.92), ty = rand(H * 0.08, H * 0.92);
         h.mode = "dart";
-        h.until = t + rand(0.2, 0.45);
-        h.aim = flock.heading + h.bias * k.spread * 0.6 + rand(-1, 1) * k.spread;
+        h.aim = Math.atan2(ty - h.y, tx - h.x);
+        h.until = t + rand(0.18, 0.4);
       } else {
         h.mode = "hover";
-        h.until = t + rand(0.8, 2.2) * k.hover;
-        // Le bec reste pointé vers la fleur, à peu près le long du parcours.
-        h.aim = flock.heading + rand(-0.6, 0.6);
+        h.until = t + rand(0.8, 2.4) * k.hover;
+        // Le bec reste pointé vers la fleur, direction quelconque.
+        h.aim = rand(0, TAU);
       }
     }
+    // Dérive hors écran : retour en douceur vers le centre.
+    if (out && !h.startledUntil) h.aim = Math.atan2(H / 2 - h.y, W / 2 - h.x);
 
     const acc = flock.begin();
     const fleeing = t < h.startledUntil;
-    if (h.mode === "dart") {
+    if (h.mode === "dart" || out) {
       flock.steer(h, h.aim, cruise * 5 * k.dart, 12);
     } else {
-      // Sur place : lente dérive le long du parcours et petite oscillation.
-      flock.steer(h, flock.heading, cruise * 0.15, 5 * k.grip);
+      // Sur place : on freine et on oscille légèrement.
+      flock.steer(h, h.aim, 0, 5 * k.grip);
       acc.x += Math.cos(t * 5 + h.id) * 45;
       acc.y += Math.sin(t * 6.1 + h.id * 2) * 45;
     }
     flock.separate(h);
     flock.move(h, dt, cruise * 5.5 * k.dart);
-    if (flock.passed(h)) flock.reenter(h);
+    if (h.x < -W || h.x > 2 * W || h.y < -H || h.y > 2 * H) flock.reenter(h);
 
     // En éclair il regarde où il va ; en stationnaire il tourne le bec vers la fleur.
     flock.face(h, dt, h.mode === "dart" || fleeing ? 16 : 4, h.aim);

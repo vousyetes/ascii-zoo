@@ -30,11 +30,14 @@ interface Owl extends Creature {
   /** Piqué : direction, début de la plongée. */
   fleeDir: number;
   diveAt: number;
+  /** Individu : teinte 0 (violet) à 1 (gris-bleu), nuance des yeux. */
+  tint: number;
+  eyeShift: number;
 }
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 3.2,
   density: 1.2,
   speed: 1,
   sway: 0.03,
@@ -62,6 +65,13 @@ const BODY: RGB = [112, 100, 150];
 const CHEVRON: RGB = [74, 66, 112];
 const WING: RGB = [96, 86, 140];
 const WING_DARK: RGB = [58, 52, 92];
+const BODY_G: RGB = [100, 112, 148];
+const CHEVRON_G: RGB = [62, 74, 108];
+const WING_G: RGB = [86, 100, 138];
+const WING_DARK_G: RGB = [48, 58, 88];
+const FACE_G: RGB = [186, 198, 222];
+const RING_G: RGB = [120, 150, 200];
+const EDGE_G: RGB = [130, 150, 205];
 const NIGHT: RGB = [4, 5, 10];
 
 const at = { x: 0, y: 0 };
@@ -84,13 +94,16 @@ export const owl: Animal<Owl> = {
       { key: "scare", label: "Piqué", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée du piqué quand on clique près du hibou." },
     ]],
   ],
-  area: 45000,
-  scale: 0.9,
+  area: 40000,
+  scale: 1.0,
   speed: 70,
   trail: { light: [150, 140, 190], dark: [120, 110, 170] },
 
   create: (c) => ({
     ...c,
+    span: c.span * rand(0.8, 1.1),
+    tint: Math.random(),
+    eyeShift: rand(-1, 1),
     phase: rand(0, TAU),
     glide: 0,
     glideUntil: 0,
@@ -112,10 +125,10 @@ export const owl: Animal<Owl> = {
     const fleeing = t < c.startledUntil;
     flock.begin();
     if (fleeing && t < c.diveAt) flock.steer(c, course, cruise * 0.3, k.grip); // il se fige, la tête pivote
-    else if (fleeing) flock.steer(c, c.fleeDir, cruise * (2.2 + 1.5 * k.scare), 6);
+    else if (fleeing) flock.steer(c, c.fleeDir, cruise * (1.8 + 1.0 * k.scare), 6);
     else flock.steer(c, course, cruise, k.grip);
     flock.separate(c, k.separation, 0.45);
-    flock.move(c, dt, fleeing && t >= c.diveAt ? cruise * 4 : cruise * 1.5);
+    flock.move(c, dt, fleeing && t >= c.diveAt ? cruise * 3 : cruise * 1.5);
     if (flock.passed(c)) flock.reenter(c);
     flock.face(c, dt, 2, course);
 
@@ -174,12 +187,35 @@ export const owl: Animal<Owl> = {
     pen.toWorld(pose, 0, 1, at);
     const sx = Math.sign(at.x - c.x) || 1; // sens écran de +v
 
+    // Teintes propres à l'individu : violet (tint 0) vers gris-bleu (tint 1).
+    const m = (a: RGB, b: RGB): RGB => [a[0] + (b[0] - a[0]) * c.tint, a[1] + (b[1] - a[1]) * c.tint, a[2] + (b[2] - a[2]) * c.tint];
+    const body = m(BODY, BODY_G);
+    const chev = m(CHEVRON, CHEVRON_G);
+    const wing = m(WING, WING_G);
+    const wingDark = m(WING_DARK, WING_DARK_G);
+    const face = m(FACE, FACE_G);
+    const ring = m(RING, RING_G);
+    const edge = m(VIOLET, EDGE_G);
+    const eye: RGB = [SUN[0], SUN[1] + c.eyeShift * 40, SUN[2] + c.eyeShift * 60];
+
     // Battement : f de -1 (haut) à 1 (bas), les ailes plongent pendant le piqué.
     const diving = flock.time < c.startledUntil && flock.time >= c.diveAt;
     const f = diving ? -0.7 : Math.sin(c.phase) * (1 - c.glide) + 0.15 * c.glide;
     const reach = diving ? 0.6 : 1;
     const wrist = { u: -0.02 + 0.1 * f, v: 0.24 * reach };
     const tip = { u: -0.06 + 0.24 * f, v: 0.5 * reach };
+    // Rémiges digitées : 6 plumes en éventail depuis le poignet, chacune avec son propre retard.
+    const NF = 6;
+    const fu = new Float32Array(NF * 4);
+    for (let i = 0; i < NF; i++) {
+      const r = i / (NF - 1);
+      const lag = -0.05 * f * r; // les plumes de bout traînent derrière
+      const len = 1 - 0.28 * Math.abs(r - 0.35);
+      fu[i * 4] = wrist.v + 0.02 * r;
+      fu[i * 4 + 1] = wrist.u - 0.01;
+      fu[i * 4 + 2] = wrist.v + (tip.v - wrist.v) * len + 0.02 * r;
+      fu[i * 4 + 3] = wrist.u + (tip.u - wrist.u) * len - 0.09 * (r - 0.3) + lag - 0.02 * (1 - reach);
+    }
 
     // Regard : décalage du disque facial, de la pupille.
     const lv = c.lookX * sx * k.headTurn;
@@ -202,7 +238,7 @@ export const owl: Animal<Owl> = {
         const dp = Math.hypot(u - px, v - py);
         if (Math.hypot(u - (px + 0.016), v - (py - 0.016 * sg)) < 0.011) return ink(out, ...TEXT, INK_SPOT);
         if (dp < pupilR) return ink(out, ...NIGHT, INK_DARK);
-        if (dEye < irisR) return ink(out, ...SUN, INK_SPOT);
+        if (dEye < irisR) return ink(out, ...eye, INK_SPOT);
         return ink(out, ...CORAL, INK_DARK);
       }
       // Bec en V, sous les yeux.
@@ -210,39 +246,42 @@ export const owl: Animal<Owl> = {
       if (u < bu + 0.01 && u > bu - 0.06 && Math.abs(v - headV * 1.5) < 0.03 * (1 - (bu - u) / 0.07)) {
         return ink(out, ...CORAL, INK_DARK, "v");
       }
-      // Disque facial : deux cercles clairs, chacun cerclé d'un anneau.
+      // Disque facial : deux cercles clairs, chacun avec deux anneaux concentriques.
       const dFace = Math.hypot(u - headU, v - (0.09 * sg + headV));
       if (dFace < 0.125) {
-        if (dFace > 0.108) return ink(out, ...RING, INK_DARK);
-        return ink(out, ...FACE, INK_BODY);
+        if (dFace > 0.108) return ink(out, ...ring, INK_DARK);
+        if (dFace > 0.094 && dFace < 0.1) return ink(out, ...chev, INK_DARK);
+        return ink(out, ...face, INK_BODY);
       }
       // Entre les deux cercles, le front.
-      if (inEllipse(u, v, headU + 0.02, headV, 0.1, 0.1)) return ink(out, ...FACE, INK_BODY);
+      if (inEllipse(u, v, headU + 0.02, headV, 0.1, 0.1)) return ink(out, ...face, INK_BODY);
       // Aigrettes : deux pointes au-dessus de la tête.
-      if (toSegment(u, v, headU + 0.1, 0.07 * sg + headV, headU + 0.2, 0.12 * sg + headV) < 0.016) {
-        return ink(out, ...CHEVRON, INK_DARK);
+      if (toSegment(u, v, headU + 0.09, 0.07 * sg + headV, headU + 0.2, 0.13 * sg + headV) < 0.016 * (1 - 0.5 * seg.t)) {
+        return ink(out, ...chev, INK_DARK);
       }
-      // Corps duveteux, chevrons de plumage.
-      if (inEllipse(u, v, -0.08, 0, 0.15, 0.115) || inEllipse(u, av, -0.3, 0, 0.1, 0.05 + 0.1 * Math.max(0, u + 0.4))) {
-        const chev = frac((u + 0.9 * av) * 14);
-        if (u < 0.0 && chev < 0.28) return ink(out, ...CHEVRON, INK_BODY);
-        return ink(out, ...BODY, INK_BODY);
+      // Corps rond et duveteux, queue courte, chevrons fins en barres alternées.
+      if (inEllipse(u, v, -0.08, 0, 0.15, 0.115) || (u < -0.2 && u > -0.34 && av < 0.05 + 0.18 * (u + 0.34) * 0.5 + 0.0)) {
+        const band = frac((u + 0.9 * av) * 22);
+        if (u < 0.0 && band < 0.4) return ink(out, ...chev, INK_BODY);
+        return ink(out, ...body, INK_BODY);
       }
-      // Ailes larges, plumes digitées au bout.
+      // Ailes : bras, secondaires, puis rémiges séparées.
       const a = seg;
-      let d = toSegment(av, u, 0.09, -0.02, wrist.v, wrist.u);
-      let w = 0.1 - 0.025 * a.t;
-      let outer = false;
-      if (d >= w) {
-        d = toSegment(av, u, wrist.v, wrist.u, tip.v, tip.u);
-        w = 0.075 - 0.03 * a.t;
-        outer = true;
+      const d = toSegment(av, u, 0.09, -0.02, wrist.v, wrist.u);
+      const w = 0.095 - 0.025 * a.t;
+      if (d < w) {
+        // Barres sombres alternées en chevrons sur le bras.
+        if (frac((u * 1.0 + av * 0.8) * 20) < 0.35) return ink(out, ...wingDark, INK_BODY);
+        return ink(out, ...(d < w * 0.5 ? wing : edge), INK_SCALE);
       }
-      if (d >= w) return false;
-      // Doigts : fentes entre les plumes primaires.
-      if (outer && a.t > 0.55 && d > w * 0.15 && frac((u - tip.u + av * 0.3) * 11) < 0.22) return false;
-      if (outer && a.t > 0.3 && frac(av * 16) < 0.18) return ink(out, ...WING_DARK, INK_DARK);
-      return ink(out, ...(d < w * 0.45 ? WING : VIOLET), outer ? INK_BODY : INK_SCALE);
+      for (let i = 0; i < NF; i++) {
+        const dd = toSegment(av, u, fu[i * 4], fu[i * 4 + 1], fu[i * 4 + 2], fu[i * 4 + 3]);
+        if (dd < 0.017 * (1 - 0.55 * seg.t) + 0.004) {
+          if (frac(seg.t * 5 + i * 0.3) < 0.28) return ink(out, ...wingDark, INK_DARK);
+          return ink(out, ...(dd < 0.007 ? wing : edge), INK_BODY);
+        }
+      }
+      return false;
     }, { light: 0.85 + 0.15 * Math.abs(f) });
   },
 };

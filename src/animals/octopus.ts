@@ -32,6 +32,8 @@ export interface Octopus extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
+  density: 1.2,
+  detail: 3.2,
   speed: 1,
   sway: 0.04,
   spread: 0.1,
@@ -69,7 +71,7 @@ function colorAt(h: number): RGB {
 }
 
 const ARMS = 8;
-const SEGS = 9;
+const SEGS = 14;
 /** Points des bras en coordonnees corps, recalcules a chaque dessin : [bras][segment] = [u, v]. */
 const armU = new Float32Array(ARMS * (SEGS + 1));
 const armV = new Float32Array(ARMS * (SEGS + 1));
@@ -87,8 +89,8 @@ export const octopus: Animal<Octopus> = {
       { key: "scare", label: "Fuite", min: 0, max: 3, step: 0.05, hint: "Vitesse de la fuite et taille du nuage d'encre au clic. 0 le rend insensible." },
     ]],
   ],
-  area: 40000,
-  scale: 1.15,
+  area: 55000,
+  scale: 1.3,
   speed: 50,
   trail: { light: [120, 80, 200], dark: [138, 116, 255] },
 
@@ -160,61 +162,61 @@ export const octopus: Animal<Octopus> = {
     }
 
     // Bras : se rassemblent a la contraction, ondulent pendant la glissade.
-    const L = 0.5 * k.armLength;
-    const spread = 1 - 0.65 * sq;
+    const L = 0.75 * k.armLength;
+    const spread = 1 - 0.7 * sq;
     for (let n = 0; n < ARMS; n++) {
       const side = (n - (ARMS - 1) / 2) / ((ARMS - 1) / 2);
       for (let i = 0; i <= SEGS; i++) {
         const f = i / SEGS;
-        const len = L * (0.85 + 0.2 * hash3(o.id, n, 3)) * (1 - 0.3 * sq);
+        const len = L * (0.85 + 0.2 * hash3(o.id, n, 3)) * (1 - 0.35 * sq);
         armU[n * (SEGS + 1) + i] = -0.06 - f * len;
         armV[n * (SEGS + 1) + i] =
-          side * 0.13 * (1 + 1.1 * f) * spread +
-          0.045 * (1 - 0.6 * sq) * Math.sin(o.phase * 0.8 - f * 5 + n * 1.1) * f;
+          side * 0.07 * (1 + 1.3 * f) * spread +
+          0.07 * (1 - 0.5 * sq) * Math.sin(o.phase * 0.8 - f * 6 + n * 1.1) * f;
       }
     }
 
-    const mA = 0.2 * (1 + 0.12 * sq);
-    const mB = 0.17 * (1 - 0.15 * sq);
-    const mU = 0.14;
-    const eyeV = 0.1;
+    const mA = 0.14 * (1 + 0.12 * sq);
+    const mB = 0.1 * (1 - 0.18 * sq);
+    const mU = 0.1;
+    const eyeV = 0.065;
 
     pen.shape(pose, 0.8, (u, v) => {
       // Yeux : globe clair avec pupille horizontale (fente le long de v).
       const av = Math.abs(v);
-      if (inEllipse(u, av, 0.02, eyeV, 0.06, 0.06)) {
-        if (inEllipse(u, av, 0.02, eyeV, 0.016, 0.04)) return ink(out, ...PUPIL, INK_SPOT, "-=");
+      if (inEllipse(u, av, 0.02, eyeV, 0.045, 0.045)) {
+        if (inEllipse(u, av, 0.02, eyeV, 0.012, 0.03)) return ink(out, ...PUPIL, INK_SPOT, "-=");
         return ink(out, ...EYE, INK_SCALE);
       }
       // Manteau.
       if (inEllipse(u, v, mU, 0, mA, mB)) {
-        if (spotted(u, v, 0.05, 0.017, o.id)) {
+        if (spotted(u, v, 0.04, 0.012, o.id)) {
           // Chromatophores : chaque tache pulse a son rythme, certaines claires, d'autres sombres.
-          const cu = Math.floor(u / 0.05);
-          const cv = Math.floor(v / 0.05);
+          const cu = Math.floor(u / 0.04);
+          const cv = Math.floor(v / 0.04);
           const beat = 0.5 + 0.5 * Math.sin(t * (1.2 + 2 * hash3(cu, cv, o.id)) + hash3(cv, cu, 5) * TAU);
           const c = hash3(cu, cv, o.id + 3) > 0.5 ? mix(skin, WHITE, 0.45 * beat) : mix(skin, PUPIL, 0.35 + 0.45 * beat);
           return ink(out, ...c, INK_DARK);
         }
         // Reflet plus clair sur le dessus du manteau.
-        return inEllipse(u, v, mU + 0.06, 0, 0.1, 0.09) ? ink(out, ...pale, INK_SCALE) : ink(out, ...skin, INK_SCALE);
+        return inEllipse(u, v, mU + 0.04, 0, 0.07, 0.06) ? ink(out, ...pale, INK_SCALE) : ink(out, ...skin, INK_SCALE);
       }
       // Tete : relie manteau et bras.
-      if (inEllipse(u, v, -0.03, 0, 0.1, 0.15)) return ink(out, ...skin, INK_SCALE);
+      if (inEllipse(u, v, -0.02, 0, 0.07, 0.085)) return ink(out, ...skin, INK_SCALE);
       // Bras : seulement derriere la tete.
       if (u > -0.02) return false;
       for (let n = 0; n < ARMS; n++) {
         const base = n * (SEGS + 1);
         for (let i = 0; i < SEGS; i++) {
           const a = base + i;
-          const w = 0.05 * (1 - 0.75 * ((i + 0.5) / SEGS));
+          const w = 0.016 * (1 - 0.8 * ((i + 0.5) / SEGS));
           const d = toSegment(u, v, armU[a], armV[a], armU[a + 1], armV[a + 1]);
           if (d > w) continue;
           // Deux rangees de ventouses : petits cercles INK_SPOT de part et d'autre de l'axe.
-          if (i > 1) {
+          if (i > 1 && i % 2 === 0) {
             const along = (seg.t - 0.5) * (0.5 + 0.5 * hash3(i, n, 1));
             const lat = d / w;
-            if (lat > 0.35 && lat < 0.95 && Math.abs(along) < 0.28) return ink(out, ...pale, INK_SPOT, "o");
+            if (lat > 0.3 && lat < 0.9 && Math.abs(along) < 0.12) return ink(out, ...pale, INK_SPOT, "o");
           }
           return ink(out, ...mix(skin, PUPIL, 0.15 + 0.2 * (i / SEGS)), INK_SCALE);
         }

@@ -1,6 +1,8 @@
 /**
- * Barre latérale des animaux : une liste numérotée façon sommaire vousyetes v3, avec une petite
- * icône ASCII par animal. Sur mobile elle se range derrière un bouton et glisse par-dessus l'écran.
+ * Barre latérale des animaux, reprise du sommaire vousyetes v3 : filet en dégradé, étiquette mono,
+ * liste numérotée, filet actif. Adaptée au moteur : chaque entrée a sa cellule de grille avec une
+ * petite icône ASCII, et un interrupteur calme / croisé règle le sens de marche des animaux.
+ * Sur mobile elle se range derrière un bouton et glisse par-dessus l'écran.
  */
 
 export interface SideItem {
@@ -8,32 +10,61 @@ export interface SideItem {
   label: string;
   /** Couleur de l'animal (CSS), reprise pour l'icône et le filet actif. */
   swatch: string;
-  /** Icône ASCII : deux lignes de cinq caractères. */
-  icon: [string, string];
+  /** Icône ASCII : trois lignes de sept caractères. */
+  icon: [string, string, string];
+  /** Mot en mono sous le nom : comment il se déplace. */
+  sub: string;
 }
 
-/** Une petite icône ASCII par animal. Cinq colonnes, deux lignes, jamais plus. */
-export const ICONS: Record<string, [string, string]> = {
-  jellyfish: [" .-. ", "/|||\\"],
-  koi: ["><(o>", " ~~~ "],
-  butterflies: ["}\\o/{", " /_\\ "],
-  rhino: ["  _/^", " |_|_"],
-  gorilla: [" (oo)", "/|##|"],
-  chameleon: ["_(o>~", "\\/\\/@"],
-  peacock: [" \\|/ ", "<(>)_"],
-  octopus: [" .-. ", "(o_o)"],
-  snail: ["  _@ ", "_(_)>"],
-  axolotl: ["\\o_o/", " ~~~="],
-  owl: ["{o,o}", "/)__)"],
-  manta: ["\\_^_/", "  v  "],
-  hummingbird: ["  ,-->", "~{o}  "],
-  elephant: ["(_)_/", "||  |"],
-  flamingo: [" ,_> ", " S|  "],
-  hippo: ["_(oo)", "|___|"],
-  seahorse: [" ,o> ", " (S) "],
+/** Une petite icône ASCII par animal : trois lignes, sept colonnes au plus. */
+export const ICONS: Record<string, [string, string, string]> = {
+  jellyfish: ["  .-.  ", " (   ) ", " /|||\\ "],
+  koi: [" ><(o> ", "  ~~~  ", "       "],
+  butterflies: [" \\\\ // ", "  (o)  ", " //\\\\  "],
+  rhino: ["    _/^ ", " ,-(o)__", " |_||_| "],
+  gorilla: ["  .-.  ", " (o_o) ", "/|###|\\"],
+  chameleon: [" _(o>~ ", "/\\/\\/@ ", " ''  '' "],
+  peacock: [" \\|/|/ ", "<(')>__", "  / \\  "],
+  octopus: ["  .-.  ", " (o_o) ", " /|||\\ "],
+  snail: ["   _@  ", " _(_)> ", "~~~~~~ "],
+  axolotl: [" \\o_o/ ", "  ~~~= ", "  '  ' "],
+  owl: [" {o,o} ", " /)__) ", "  \" \"  "],
+  manta: ["\\_ ^ _/", "  \\ /  ", "   v   "],
+  hummingbird: ["   ,-->", " ~{o}  ", "   ''  "],
+  elephant: [" (_)_/ ", " ||  | ", " /\\ /\\ "],
+  flamingo: ["  ,_>  ", "  S|   ", "  /\\   "],
+  hippo: [" _(oo)_", "|_____|", " ‾‾ ‾‾ "].map((l) => l.replace("‾", "'")) as [string, string, string],
+  seahorse: ["  ,o>  ", "  (S)  ", "  ,)   "],
 };
 
-export function mountSidebar(host: HTMLElement, items: SideItem[], current: string, onPick: (value: string) => void) {
+/** Comment chacun se déplace, pour la ligne mono sous son nom. */
+export const MOVES: Record<string, string> = {
+  jellyfish: "flotte",
+  koi: "nage",
+  butterflies: "vole",
+  rhino: "charge",
+  gorilla: "marche",
+  chameleon: "rampe",
+  peacock: "fait la roue",
+  octopus: "nage",
+  snail: "rampe",
+  axolotl: "nage",
+  owl: "plane",
+  manta: "plane",
+  hummingbird: "sur place",
+  elephant: "marche",
+  flamingo: "échasse",
+  hippo: "marche",
+  seahorse: "dérive",
+};
+
+export function mountSidebar(
+  host: HTMLElement,
+  items: SideItem[],
+  current: string,
+  onPick: (value: string) => void,
+  onCalm?: (calm: boolean) => void,
+) {
   const list = host.querySelector<HTMLElement>(".side-list")!;
   const toggle = document.querySelector<HTMLButtonElement>(".side-toggle");
   const label = host.querySelector<HTMLElement>(".side-count");
@@ -46,9 +77,10 @@ export function mountSidebar(host: HTMLElement, items: SideItem[], current: stri
     b.dataset.value = it.value;
     b.style.setProperty("--swatch", it.swatch);
     b.innerHTML =
-      `<pre class="ico" aria-hidden="true">${it.icon[0]}\n${it.icon[1]}</pre>` +
+      `<span class="cell" aria-hidden="true"><pre class="ico">${it.icon.join("\n")}</pre></span>` +
       `<span class="n">${String(i + 1).padStart(2, "0")}</span>` +
-      `<span class="name">${it.label}</span>`;
+      `<span class="name">${it.label}</span>` +
+      `<span class="sub">${it.sub}</span>`;
     b.addEventListener("click", () => {
       select(it.value, true);
       closeDrawer();
@@ -74,6 +106,15 @@ export function mountSidebar(host: HTMLElement, items: SideItem[], current: stri
     const next = buttons[(at + (e.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length];
     next.focus();
     select(next.dataset.value!, true);
+  });
+
+  // Interrupteur : croisé (ils vont dans tous les sens) ou calme (tous le même).
+  const sw = host.querySelector<HTMLButtonElement>(".side-calm");
+  sw?.addEventListener("click", () => {
+    const calm = sw.getAttribute("aria-pressed") !== "true";
+    sw.setAttribute("aria-pressed", String(calm));
+    sw.querySelector(".state")!.textContent = calm ? "calme" : "croisé";
+    onCalm?.(calm);
   });
 
   function closeDrawer() {
