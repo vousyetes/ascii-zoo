@@ -1,8 +1,8 @@
 /**
- * Barre latérale des animaux, reprise du sommaire vousyetes v3 : filet en dégradé, étiquette mono,
- * liste numérotée, filet actif. Adaptée au moteur : chaque entrée a sa cellule de grille avec une
- * petite icône ASCII, et un interrupteur calme / croisé règle le sens de marche des animaux.
- * Sur mobile elle se range derrière un bouton et glisse par-dessus l'écran.
+ * Dock des animaux : une colonne de vignettes (le vrai animal du moteur, en miniature), centrée à
+ * gauche. Rien d'autre à l'écran : au survol, une étiquette sort à côté de la vignette avec le
+ * nom et la façon de se déplacer. Un petit bouton en bas règle le sens (calme ou croisé).
+ * Sur mobile le dock se range derrière un bouton et glisse par-dessus l'écran, avec les noms.
  */
 
 export interface SideItem {
@@ -46,8 +46,7 @@ export function mountSidebar(
 ) {
   const list = host.querySelector<HTMLElement>(".side-list")!;
   const toggle = document.querySelector<HTMLButtonElement>(".side-toggle");
-  const label = host.querySelector<HTMLElement>(".side-count");
-  if (label) label.textContent = String(items.length).padStart(2, "0");
+  const tip = document.querySelector<HTMLElement>(".side-tip");
 
   const buttons = items.map((it, i) => {
     const b = document.createElement("button");
@@ -64,6 +63,21 @@ export function mountSidebar(
       select(it.value, true);
       closeDrawer();
     });
+    // Étiquette au survol : une seule bulle, hors de la liste pour ne pas être coupée.
+    const show = () => {
+      if (!tip || matchMedia("(max-width: 700px)").matches) return;
+      const r = b.getBoundingClientRect();
+      tip.innerHTML = `<span class="n">${String(i + 1).padStart(2, "0")}</span><span class="t">${it.label}</span><span class="s">${it.sub}</span>`;
+      tip.style.setProperty("--swatch", it.swatch);
+      tip.style.top = `${r.top + r.height / 2}px`;
+      tip.style.left = `${r.right + 12}px`;
+      tip.classList.add("on");
+    };
+    const hide = () => tip?.classList.remove("on");
+    b.addEventListener("pointerenter", show);
+    b.addEventListener("pointerleave", hide);
+    b.addEventListener("focus", show);
+    b.addEventListener("blur", hide);
     list.append(b);
     return b;
   });
@@ -92,7 +106,8 @@ export function mountSidebar(
   sw?.addEventListener("click", () => {
     const calm = sw.getAttribute("aria-pressed") !== "true";
     sw.setAttribute("aria-pressed", String(calm));
-    sw.querySelector(".state")!.textContent = calm ? "calme" : "croisé";
+    sw.querySelector(".g")!.textContent = calm ? ">>" : "<>";
+    sw.title = calm ? "Calme : tous dans le même sens. Cliquer pour les faire se croiser." : "Croisé : ils vont dans tous les sens. Cliquer pour tout calmer.";
     onCalm?.(calm);
   });
 

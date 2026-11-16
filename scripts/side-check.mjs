@@ -1,4 +1,4 @@
-// Vérifie la barre latérale refermée puis ouverte au survol : node scripts/side-check.mjs
+// Vérifie le dock : repos, survol d'une vignette, mobile. node scripts/side-check.mjs
 import { createRequire } from "node:module";
 const require = createRequire("/Users/vousyetes/.npm/_npx/9833c18b2d85bc59/node_modules/");
 const { chromium } = require("playwright");
@@ -9,13 +9,15 @@ d.on("pageerror", (e) => errs.push(String(e).slice(0, 160)));
 await d.goto("http://localhost:5199/?animal=rhino");
 await d.waitForTimeout(3500);
 await d.screenshot({ path: "/tmp/side-d.png" });
-await d.mouse.move(30, 300);
-await d.waitForTimeout(700);
+await d.hover('.side-list button:nth-child(6)');
+await d.waitForTimeout(500);
 await d.screenshot({ path: "/tmp/side-d2.png" });
 const m = await b.newPage({ viewport: { width: 540, height: 960 } });
 m.on("pageerror", (e) => errs.push(String(e).slice(0, 160)));
 await m.goto("http://localhost:5199/?animal=seahorse");
-await m.waitForTimeout(3000);
-await m.screenshot({ path: "/tmp/side-m1.png" });
+await m.waitForTimeout(2500);
+await m.click(".side-toggle");
+await m.waitForTimeout(600);
+await m.screenshot({ path: "/tmp/side-m2.png" });
 await b.close();
 console.log(errs.length ? errs : "pas d'erreur");
