@@ -25,7 +25,7 @@ interface Chameleon extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   fog: 0.2,
   density: 1.2,
   farthest: 0.55,
@@ -57,7 +57,9 @@ const WHITE = 255;
 /** Couleur de la peau au point w du corps (0 tête, > 0 vers la queue), flash compris. */
 function skin(c: Chameleon, time: number, k: typeof DEFAULTS, w: number): RGB {
   // Segments lisses : la teinte reste quasi constante sur une zone puis glisse vite vers la suivante.
-  const q = (c.phase + time * 0.07 * k.colorSpeed + w * k.wave * 1.6) * STOPS.length;
+  // Tout le corps prend la meme couleur, avec un tout petit decalage tete-queue : il CHANGE de couleur
+  // dans le temps (il tient une teinte puis glisse vers la suivante), il ne reste pas multicolore.
+  const q = (c.phase + time * 0.09 * k.colorSpeed + w * k.wave * 0.06) * STOPS.length;
   const qi = Math.floor(q);
   const qf = Math.min(1, Math.max(0, (q - qi - 0.6) / 0.4));
   const x = frac((qi + qf) / STOPS.length) * STOPS.length;

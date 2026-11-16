@@ -38,7 +38,7 @@ export interface Flamingo extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   density: 1.1,
   speed: 1,
   sway: 0,

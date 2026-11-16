@@ -46,7 +46,7 @@ interface Seahorse extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   density: 1.5,
-  detail: 3.2,
+  detail: 1.6,
   speed: 1,
   sway: 0,
   spread: 0.5,

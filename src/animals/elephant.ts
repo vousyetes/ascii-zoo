@@ -34,7 +34,7 @@ interface Elephant extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   density: 1.0,
   sway: 0.03,
   spread: 0.04,

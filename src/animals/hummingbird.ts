@@ -24,7 +24,7 @@ interface Hummingbird extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   fog: 0.2,
-  detail: 3.2,
+  detail: 1.6,
   density: 0.6,
   sway: 0,
   spread: 0.5,

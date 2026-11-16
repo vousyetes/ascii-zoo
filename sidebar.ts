@@ -10,32 +10,11 @@ export interface SideItem {
   label: string;
   /** Couleur de l'animal (CSS), reprise pour l'icône et le filet actif. */
   swatch: string;
-  /** Icône ASCII : trois lignes de sept caractères. */
-  icon: [string, string, string];
+  /** Vignette : le vrai animal du moteur, en miniature (public/icons/<animal>.png). */
+  icon: string;
   /** Mot en mono sous le nom : comment il se déplace. */
   sub: string;
 }
-
-/** Une petite icône ASCII par animal : trois lignes, sept colonnes au plus. */
-export const ICONS: Record<string, [string, string, string]> = {
-  jellyfish: ["  .-.  ", " (   ) ", " /|||\\ "],
-  koi: [" ><(o> ", "  ~~~  ", "       "],
-  butterflies: [" \\\\ // ", "  (o)  ", " //\\\\  "],
-  rhino: ["    _/^ ", " ,-(o)__", " |_||_| "],
-  gorilla: ["  .-.  ", " (o_o) ", "/|###|\\"],
-  chameleon: [" _(o>~ ", "/\\/\\/@ ", " ''  '' "],
-  peacock: [" \\|/|/ ", "<(')>__", "  / \\  "],
-  octopus: ["  .-.  ", " (o_o) ", " /|||\\ "],
-  snail: ["   _@  ", " _(_)> ", "~~~~~~ "],
-  axolotl: [" \\o_o/ ", "  ~~~= ", "  '  ' "],
-  owl: [" {o,o} ", " /)__) ", "  \" \"  "],
-  manta: ["\\_ ^ _/", "  \\ /  ", "   v   "],
-  hummingbird: ["   ,-->", " ~{o}  ", "   ''  "],
-  elephant: [" (_)_/ ", " ||  | ", " /\\ /\\ "],
-  flamingo: ["  ,_>  ", "  S|   ", "  /\\   "],
-  hippo: [" _(oo)_", "|_____|", " ‾‾ ‾‾ "].map((l) => l.replace("‾", "'")) as [string, string, string],
-  seahorse: ["  ,o>  ", "  (S)  ", "  ,)   "],
-};
 
 /** Comment chacun se déplace, pour la ligne mono sous son nom. */
 export const MOVES: Record<string, string> = {
@@ -77,7 +56,7 @@ export function mountSidebar(
     b.dataset.value = it.value;
     b.style.setProperty("--swatch", it.swatch);
     b.innerHTML =
-      `<span class="cell" aria-hidden="true"><pre class="ico">${it.icon.join("\n")}</pre></span>` +
+      `<span class="cell" aria-hidden="true"><img class="ico" src="${it.icon}" alt="" width="52" height="38" loading="lazy" decoding="async"></span>` +
       `<span class="n">${String(i + 1).padStart(2, "0")}</span>` +
       `<span class="name">${it.label}</span>` +
       `<span class="sub">${it.sub}</span>`;

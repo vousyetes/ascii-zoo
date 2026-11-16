@@ -19,10 +19,9 @@ canvas { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
 .aurora {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
   background:
-    radial-gradient(60% 40% at 0% 0%, rgba(255, 176, 103, 0.13), transparent 70%),
+    radial-gradient(60% 40% at 0% 0%, rgba(255, 176, 103, 0.10), transparent 70%),
     radial-gradient(60% 40% at 100% 20%, rgba(92, 200, 255, 0.10), transparent 70%),
     radial-gradient(70% 40% at 40% 100%, rgba(138, 116, 255, 0.12), transparent 70%);
-  mix-blend-mode: screen;
 }
 /* Grille 64 px à 2,8 % de blanc, comme sur vousyetes.fr. */
 body::before {
@@ -166,4 +165,38 @@ body::before {
   .side-calm .k { display: none; }
   .side:hover .side-calm, .side:focus-within .side-calm { padding: 8px 10px; justify-content: space-between; font-size: 11px; }
   .side:hover .side-calm .k, .side:focus-within .side-calm .k { display: inline; }
+}
+
+/* Mode icone : seule la scene reste, sans interface. */
+.icon-mode .side, .icon-mode .vye-title, .icon-mode .aurora, .icon-mode .side-toggle, .icon-mode .tweaks, .icon-mode .tweaks-open { display: none !important; }
+.icon-mode::before { display: none; }
+
+/* Vignettes : le vrai animal en miniature, dans sa cellule de grille. */
+.side-list .cell { padding: 0; overflow: hidden; }
+.side-list img.ico { display: block; width: 100%; height: 100%; object-fit: contain; mix-blend-mode: screen; opacity: 0.7; transition: opacity 0.2s, filter 0.2s; }
+.side-list button:hover img.ico { opacity: 0.95; }
+.side-list button[aria-checked="true"] img.ico { opacity: 1; filter: drop-shadow(0 0 5px var(--swatch)); }
+@media (min-width: 701px) {
+  .side { width: 76px; }
+  .side-list button { grid-template-columns: 60px 1.9em minmax(0, 1fr); }
+  .side-list .cell { width: 60px; height: 44px; }
+  .side-list button::before { left: -6px; }
+  .vye-title { padding-left: 76px; }
+  .vye-tag { left: 76px; }
+}
+
+/* Resserre : les 17 vignettes tiennent dans le rail refermé. */
+@media (min-width: 701px) {
+  .side { width: 68px; }
+  .side-list button { grid-template-columns: 52px 1.9em minmax(0, 1fr); }
+  .side-list .cell { width: 52px; height: 38px; }
+  .vye-title { padding-left: 68px; }
+  .vye-tag { left: 68px; }
+}
+@media (min-width: 701px) {
+  .side { padding-top: 16px; padding-bottom: 10px; }
+  .side-list { gap: 0; }
+  .side-list .cell { height: 36px; }
+  .side-label { margin-bottom: 8px; }
+  .side-foot { margin-top: 6px; padding-top: 8px; }
 }

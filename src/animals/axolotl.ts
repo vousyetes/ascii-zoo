@@ -36,7 +36,7 @@ interface Axolotl extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   fog: 0.3,
   density: 1.3,
   speed: 1,

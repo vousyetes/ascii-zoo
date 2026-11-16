@@ -32,7 +32,7 @@ interface Manta extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   density: 1.0,
   speed: 1,
   sway: 0.03,

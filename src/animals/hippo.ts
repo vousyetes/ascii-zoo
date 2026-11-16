@@ -28,7 +28,7 @@ interface Hippo extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 3.2,
+  detail: 1.6,
   density: 1.2,
   sway: 0.02,
   spread: 0.03,

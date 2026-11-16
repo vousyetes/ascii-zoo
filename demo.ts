@@ -1,6 +1,8 @@
 import { mountTweakPanel, type Control, type ControlKit } from "./panel";
 import { ANIMALS, AnimalEngine, SHARED_CONTROLS, type AnimalKey, type KnobSpec, type Tuning } from "./src";
-import { ICONS, MOVES, mountSidebar } from "./sidebar";
+import { MOVES, mountSidebar } from "./sidebar";
+
+const BASE: string = (import.meta as any).env?.BASE_URL ?? "/";
 
 /**
  * Prefix for everything this app keeps in localStorage. It shares a domain with the older
@@ -28,6 +30,25 @@ let animal: AnimalKey = isAnimal(params.get("animal")) ? (params.get("animal") a
 
 // Dark mode only: every animal is tuned to glow on black.
 const engine = new AnimalEngine(document.querySelector("canvas")!, { animal, count, theme: "dark" });
+
+// Mode icône : un seul animal, figé au centre, pour en tirer la vignette de la barre (scripts/icons.mjs).
+if (params.has("icon")) {
+  document.body.classList.add("icon-mode");
+  setTimeout(() => {
+    const e = engine as any;
+    cancelAnimationFrame(e.raf);
+    const f = e.flock;
+    const c = f.creatures[0];
+    const r = document.querySelector("canvas")!.getBoundingClientRect();
+    c.x = r.width / 2;
+    c.y = r.height / 2;
+    c.roll = 1;
+    c.depth = 1;
+    c.span = f.base * f.tuning.size * 1.7;
+    e.renderer.render(f, 0.016);
+    (window as any).__iconReady = true;
+  }, 2600);
+}
 
 // ── tweak panel: shared Movement and Look knobs around the animal's own ──
 
@@ -65,7 +86,7 @@ window.addEventListener("storage", (e) => {
 
 mountSidebar(
   document.querySelector<HTMLElement>(".side")!,
-  KEPT.map((key) => ({ value: key, label: FR[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})`, icon: ICONS[key] ?? ["       ", "   ?   ", "       "], sub: MOVES[key] ?? "" })),
+  KEPT.map((key) => ({ value: key, label: FR[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})`, icon: `${BASE}icons/${key}.png`, sub: MOVES[key] ?? "" })),
   animal,
   (value) => {
     animal = value as AnimalKey;

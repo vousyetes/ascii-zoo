@@ -30,7 +30,7 @@ interface Rhino extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 3.0,
+  detail: 1.6,
   density: 1.0,
   sway: 0.02,
   spread: 0.03,

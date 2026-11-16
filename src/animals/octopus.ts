@@ -33,7 +33,7 @@ export interface Octopus extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   density: 1.2,
-  detail: 3.2,
+  detail: 1.6,
   speed: 1,
   sway: 0.04,
   spread: 0.1,
@@ -75,6 +75,8 @@ const SEGS = 14;
 /** Points des bras en coordonnees corps, recalcules a chaque dessin : [bras][segment] = [u, v]. */
 const armU = new Float32Array(ARMS * (SEGS + 1));
 const armV = new Float32Array(ARMS * (SEGS + 1));
+/** Boite englobante de chaque bras : evite de tester ses segments pour la plupart des cellules. */
+const box = new Float32Array(ARMS * 4);
 
 export const octopus: Animal<Octopus> = {
   key: "octopus",
@@ -174,6 +176,18 @@ export const octopus: Animal<Octopus> = {
           side * 0.07 * (1 + 1.3 * f) * spread +
           0.07 * (1 - 0.5 * sq) * Math.sin(o.phase * 0.8 - f * 6 + n * 1.1) * f;
       }
+      let u0 = 9, u1 = -9, v0 = 9, v1 = -9;
+      for (let i = 0; i <= SEGS; i++) {
+        const a = n * (SEGS + 1) + i;
+        if (armU[a] < u0) u0 = armU[a];
+        if (armU[a] > u1) u1 = armU[a];
+        if (armV[a] < v0) v0 = armV[a];
+        if (armV[a] > v1) v1 = armV[a];
+      }
+      box[n * 4] = u0 - 0.04;
+      box[n * 4 + 1] = u1 + 0.04;
+      box[n * 4 + 2] = v0 - 0.04;
+      box[n * 4 + 3] = v1 + 0.04;
     }
 
     const mA = 0.14 * (1 + 0.12 * sq);
@@ -206,6 +220,7 @@ export const octopus: Animal<Octopus> = {
       // Bras : seulement derriere la tete.
       if (u > -0.02) return false;
       for (let n = 0; n < ARMS; n++) {
+        if (u < box[n * 4] || u > box[n * 4 + 1] || v < box[n * 4 + 2] || v > box[n * 4 + 3]) continue;
         const base = n * (SEGS + 1);
         for (let i = 0; i < SEGS; i++) {
           const a = base + i;

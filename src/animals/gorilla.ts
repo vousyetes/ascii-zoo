@@ -39,7 +39,7 @@ interface Gorilla extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
+  detail: 1.6,
   fog: 0.3,
   density: 1.2,
   sway: 0.02,
