@@ -36,6 +36,7 @@ export const MOVES: Record<string, string> = {
   flamingo: "échasse",
   hippo: "marche",
   seahorse: "dérive",
+  frogs: "saute",
   ants: "porte",
   firefly: "clignote",
 };
@@ -126,6 +127,19 @@ export function mountSidebar(
   window.addEventListener("pointerdown", (e) => {
     if (host.classList.contains("open") && !host.contains(e.target as Node) && e.target !== toggle) closeDrawer();
   });
+
+  // Écran bas : le dock passe sur plusieurs colonnes au lieu de défiler (sinon les derniers animaux sont cachés).
+  const fit = () => {
+    if (matchMedia("(max-width: 700px)").matches) {
+      list.style.removeProperty("--rows");
+      return;
+    }
+    const room = window.innerHeight - 24 - 16 - 40 - 8;
+    const rows = Math.max(4, Math.floor(room / 34));
+    list.style.setProperty("--rows", String(Math.min(rows, items.length)));
+  };
+  fit();
+  window.addEventListener("resize", fit);
 
   select(current, false);
 }

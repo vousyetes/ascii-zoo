@@ -176,3 +176,11 @@ body::before {
   .vye-title { padding-left: 62px; }
   .vye-tag { left: 62px; }
 }
+
+/* Plusieurs colonnes si l'ecran est bas : tout reste visible. */
+@media (min-width: 701px) {
+  .side-list { grid-auto-flow: column; grid-template-rows: repeat(var(--rows, 21), auto); gap: 3px; overflow: visible; }
+  .side { width: auto; }
+  .vye-title { padding-left: 0; }
+  .vye-tag { left: 0; }
+}

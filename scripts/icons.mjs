@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { mkdirSync, writeFileSync } from "node:fs";
 const require = createRequire("/Users/vousyetes/.npm/_npx/9833c18b2d85bc59/node_modules/");
 const { chromium } = require("playwright");
-const all = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "salamander", "firefly", "ants"];
+const all = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "salamander", "firefly", "ants", "frogs"];
 const keys = process.argv.length > 2 ? process.argv.slice(2) : all;
 const RATIO = 60 / 44;
 mkdirSync("public/icons", { recursive: true });

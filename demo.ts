@@ -11,9 +11,9 @@ const BASE: string = (import.meta as any).env?.BASE_URL ?? "/";
 const STORE = "ascii-animals:";
 
 /** vousyetes garde trois animaux : lisibles en 9:16, et leurs couleurs sont celles de la charte. */
-const KEPT: AnimalKey[] = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "salamander", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "ants", "firefly"];
+const KEPT: AnimalKey[] = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "salamander", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "ants", "firefly", "frogs"];
 
-const FR: Partial<Record<AnimalKey, string>> = { jellyfish: "méduse", koi: "koï", butterflies: "papillon", rhino: "rhino", gorilla: "gorille", chameleon: "caméléon", peacock: "paon", octopus: "poulpe", snail: "escargot", axolotl: "axolotl", salamander: "salamandre", owl: "hibou", manta: "raie manta", hummingbird: "colibri", elephant: "éléphant", flamingo: "flamant", hippo: "hippopotame", seahorse: "hippocampe", ants: "fourmi", firefly: "luciole" };
+const FR: Partial<Record<AnimalKey, string>> = { jellyfish: "méduse", koi: "koï", butterflies: "papillon", rhino: "rhino", gorilla: "gorille", chameleon: "caméléon", peacock: "paon", octopus: "poulpe", snail: "escargot", axolotl: "axolotl", salamander: "salamandre", owl: "hibou", manta: "raie manta", hummingbird: "colibri", elephant: "éléphant", flamingo: "flamant", hippo: "hippopotame", seahorse: "hippocampe", ants: "fourmi", frogs: "grenouille", firefly: "luciole" };
 
 const params = new URLSearchParams(location.search);
 
