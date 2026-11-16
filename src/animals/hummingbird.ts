@@ -24,7 +24,8 @@ interface Hummingbird extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   fog: 0.2,
-  density: 1,
+  detail: 2.2,
+  density: 1.3,
   sway: 0,
   spread: 0.5,
   farthest: 0.6,
@@ -64,9 +65,9 @@ export const hummingbird: Animal<Hummingbird> = {
     ]],
   ],
   // Grand et rare : quelques colibris seulement, bien lisibles en 9:16.
-  area: 330000,
-  scale: 3.6,
-  max: 8,
+  area: 35000,
+  scale: 0.8,
+  max: 40,
   speed: 60,
   trail: { light: [40, 150, 120], dark: [126, 226, 168] },
 

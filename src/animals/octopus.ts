@@ -87,8 +87,8 @@ export const octopus: Animal<Octopus> = {
       { key: "scare", label: "Fuite", min: 0, max: 3, step: 0.05, hint: "Vitesse de la fuite et taille du nuage d'encre au clic. 0 le rend insensible." },
     ]],
   ],
-  area: 170000,
-  scale: 2.2,
+  area: 40000,
+  scale: 1.15,
   speed: 50,
   trail: { light: [120, 80, 200], dark: [138, 116, 255] },
 

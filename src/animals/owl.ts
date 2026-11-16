@@ -34,8 +34,8 @@ interface Owl extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.7,
-  density: 0.6,
+  detail: 2.2,
+  density: 1.2,
   speed: 1,
   sway: 0.03,
   spread: 0,
@@ -84,8 +84,8 @@ export const owl: Animal<Owl> = {
       { key: "scare", label: "Piqué", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée du piqué quand on clique près du hibou." },
     ]],
   ],
-  area: 160000,
-  scale: 2.3,
+  area: 45000,
+  scale: 0.9,
   speed: 70,
   trail: { light: [150, 140, 190], dark: [120, 110, 170] },
 

@@ -34,7 +34,8 @@ interface Elephant extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 0.45,
+  detail: 2.2,
+  density: 1.0,
   sway: 0.03,
   spread: 0.04,
   farthest: 0.55,
@@ -81,8 +82,8 @@ export const elephant: Animal<Elephant> = {
       { key: "scare", label: "Barrissement", min: 0, max: 3, step: 0.05, hint: "Durée du barrissement et de la course qui suit un clic proche. 0 : il ignore le clic." },
     ]],
   ],
-  area: 150000,
-  scale: 2.1,
+  area: 55000,
+  scale: 1.0,
   speed: 38,
   trail: { light: [150, 150, 170], dark: [120, 124, 160] },
 

@@ -39,9 +39,9 @@ interface Gorilla extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.5,
+  detail: 2.2,
   fog: 0.3,
-  density: 0.7,
+  density: 1.2,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.4,
@@ -90,8 +90,8 @@ export const gorilla: Animal<Gorilla> = {
       { key: "thump", label: "Battements", min: 0.3, max: 3, step: 0.05, hint: "Nombre et vitesse des coups sur le torse après un clic." },
     ]],
   ],
-  area: 180000,
-  scale: 2.4,
+  area: 50000,
+  scale: 1.1,
   speed: 38,
   trail: { light: [60, 66, 90], dark: [70, 76, 104] },
 

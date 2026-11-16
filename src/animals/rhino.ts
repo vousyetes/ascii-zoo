@@ -30,7 +30,8 @@ interface Rhino extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 0.9,
+  detail: 2.2,
+  density: 1.2,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.35,
@@ -79,8 +80,8 @@ export const rhino: Animal<Rhino> = {
       { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
     ]],
   ],
-  area: 190000,
-  scale: 1.9,
+  area: 45000,
+  scale: 0.95,
   speed: 40,
   trail: { light: [150, 130, 190], dark: [168, 148, 214] },
 

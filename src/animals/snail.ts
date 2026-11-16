@@ -26,8 +26,8 @@ interface Snail extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.7,
-  density: 0.7,
+  detail: 2.2,
+  density: 0.9,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.5,
@@ -71,8 +71,8 @@ export const snail: Animal<Snail> = {
       { key: "slime", label: "Bave", min: 0, max: 3, step: 0.05, hint: "Quantite de bave brillante laissee derriere lui." },
     ]],
   ],
-  area: 230000,
-  scale: 2,
+  area: 30000,
+  scale: 0.7,
   speed: 14,
   trail: { light: [92, 170, 215], dark: [150, 220, 255] },
 

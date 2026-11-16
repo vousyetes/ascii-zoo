@@ -36,9 +36,9 @@ interface Axolotl extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.5,
+  detail: 2.2,
   fog: 0.3,
-  density: 0.8,
+  density: 1.3,
   speed: 1,
   spread: 0.1,
   sway: 0.05,
@@ -96,8 +96,8 @@ export const axolotl: Animal<Axolotl> = {
       { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée de la fuite quand on clique près de lui." },
     ]],
   ],
-  area: 80000,
-  scale: 1.8,
+  area: 40000,
+  scale: 0.9,
   speed: 40,
   trail: { light: [230, 130, 170], dark: [255, 140, 170] },
 

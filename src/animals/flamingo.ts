@@ -38,8 +38,8 @@ export interface Flamingo extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.7,
-  density: 0.7,
+  detail: 2.2,
+  density: 1.1,
   speed: 1,
   sway: 0,
   spread: 0.02,
@@ -85,8 +85,8 @@ export const flamingo: Animal<Flamingo> = {
       { key: "scare", label: "Peur du clic", min: 0, max: 3, step: 0.05, hint: "Duree de la fuite en vol quand on clique pres de lui." },
     ]],
   ],
-  area: 180000,
-  scale: 2.7,
+  area: 50000,
+  scale: 1.0,
   speed: 55,
   trail: { light: [214, 120, 130], dark: [255, 150, 150] },
 

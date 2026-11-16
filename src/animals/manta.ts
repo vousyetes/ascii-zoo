@@ -32,7 +32,8 @@ interface Manta extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  density: 0.3,
+  detail: 2.2,
+  density: 1.0,
   speed: 1,
   sway: 0.03,
   spread: 0.04,
@@ -74,8 +75,8 @@ export const manta: Animal<Manta> = {
       { key: "loop", label: "Looping", min: 0, max: 2, step: 0.05, hint: "La durée du looping quand on clique près d'une raie. 0 les rend indifférentes." },
     ]],
   ],
-  area: 700000,
-  scale: 5,
+  area: 80000,
+  scale: 1.3,
   speed: 36,
   trail: { light: [70, 118, 226], dark: [92, 200, 255] },
 

@@ -31,9 +31,9 @@ interface Peacock extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 1.5,
+  detail: 2.2,
   fog: 0.2,
-  density: 0.9,
+  density: 1.2,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.5,
@@ -87,8 +87,8 @@ export const peacock: Animal<Peacock> = {
       { key: "shiver", label: "Fremissement", min: 0, max: 2, step: 0.05, hint: "Force du tremblement des plumes quand la roue est ouverte." },
     ]],
   ],
-  area: 90000,
-  scale: 1.5,
+  area: 45000,
+  scale: 0.9,
   speed: 40,
   trail: { light: [150, 150, 190], dark: [92, 120, 190] },
 
