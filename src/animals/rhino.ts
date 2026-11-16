@@ -45,15 +45,15 @@ const DEFAULTS = {
   rage: 1,
 };
 
-// Teinte dominante violette, corne et rivets en soleil, un souffle de cyan sur les plaques d'épaule.
-const PLATE_A: RGB = [122, 104, 226];
-const PLATE_B: RGB = [98, 86, 190];
-const SHOULDER: RGB = [92, 150, 214];
-const BELLY: RGB = [74, 66, 150];
-const LEG_NEAR: RGB = [108, 94, 204];
-const LEG_FAR: RGB = [70, 62, 144];
-const HORN: RGB = [255, 176, 103];
-const RIVET: RGB = [255, 200, 150];
+// Gris d'ardoise, deux cornes blanc ivoire, rivets clairs.
+const PLATE_A: RGB = [150, 156, 170];
+const PLATE_B: RGB = [96, 102, 118];
+const SHOULDER: RGB = [178, 186, 200];
+const BELLY: RGB = [70, 74, 88];
+const LEG_NEAR: RGB = [128, 134, 150];
+const LEG_FAR: RGB = [78, 82, 96];
+const HORN: RGB = [226, 223, 213];
+const RIVET: RGB = [250, 248, 242];
 const EYE: RGB = [236, 238, 247];
 const EYE_BG: RGB = [14, 10, 20];
 
@@ -70,7 +70,7 @@ const JOINTS = [-0.2, -0.08, 0.04, 0.16];
 export const rhino: Animal<Rhino> = {
   key: "rhino",
   label: "rhino",
-  swatch: [138, 116, 255],
+  swatch: [178, 186, 200],
   defaults: DEFAULTS,
   controls: [
     ["Rhino", [
@@ -83,7 +83,7 @@ export const rhino: Animal<Rhino> = {
   area: 100000,
   scale: 1.8,
   speed: 40,
-  trail: { light: [150, 130, 190], dark: [168, 148, 214] },
+  trail: { light: [140, 146, 160], dark: [150, 156, 172] },
 
   create: (c) => ({ ...c, dir: Math.random() < 0.5 ? 1 : -1, walking: true, until: 0, gait: rand(0, TAU), charge: 0, fleeDir: 0, fleeSpeed: 0, fleeFrom: 0 }),
 
@@ -184,8 +184,8 @@ export const rhino: Animal<Rhino> = {
       if (toSegment(fu, v, 0.5, -0.09 + headDown * 1.4, hornTipX, -0.19 + headDown * 1.8) < 0.02 * (1 - seg.t * 0.9) + 0.003) {
         return ink(out, ...RIVET, INK_SCALE);
       }
-      // Petite corne sur le garrot, en bague elle aussi.
-      if (toSegment(fu, v, 0.12, -0.15 + bob, 0.15, -0.23 + bob) < 0.018 * (1 - seg.t * 0.85) + 0.003) return ink(out, ...HORN, INK_SCALE);
+      // Deuxieme corne, plus courte, derriere la grande sur le nez.
+      if (toSegment(fu, v, 0.36, -0.06 + headDown, 0.4, -0.15 + headDown * 1.3) < 0.026 * (1 - seg.t * 0.8) + 0.003) return Math.floor(seg.t * 3) % 2 ? ink(out, ...HORN, INK_SCALE) : ink(out, ...RIVET, INK_SCALE);
       // Oreille pointue, avec son creux.
       if (toSegment(fu, v, 0.27, -0.06 + headDown, 0.255, -0.16 + headDown) < 0.02 * (1 - seg.t * 0.9) + 0.003) {
         return seg.t < 0.5 ? ink(out, ...PLATE_A, INK_SCALE) : ink(out, ...PLATE_B, INK_DARK);
