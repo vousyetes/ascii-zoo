@@ -1,0 +1,232 @@
+/**
+ * Hibou en vol silencieux, vu de face.
+ *
+ * Gros disque facial (deux cercles clairs cerclés d'un anneau), énormes yeux
+ * jaune soleil avec pupille noire et reflet, petit bec en V, aigrettes, ailes
+ * larges aux plumes digitées qui battent lentement entre de longues glissades.
+ * Corps duveteux gris-violet à chevrons. Le moteur ne donne pas la position du
+ * curseur : la tête se tourne vers le dernier clic proche (reçu par startle),
+ * puis revient au centre. Au clic : yeux écarquillés (pupille qui rétrécit,
+ * iris qui grossit), la tête pivote, puis piqué vers l'opposé.
+ */
+import { SHARED_TUNING, type Animal, type Creature } from "../flock";
+import { INK_BODY, INK_DARK, INK_SCALE, INK_SPOT, ink, type RGB } from "../ink";
+import { clamp, frac, rand, TAU } from "../math";
+import { inEllipse, seg, toSegment } from "./shapes";
+
+interface Owl extends Creature {
+  phase: number;
+  /** 0 bat, 1 plane. */
+  glide: number;
+  glideUntil: number;
+  /** Direction du regard, -1 à 1 (gauche/droite, haut/bas à l'écran). */
+  lookX: number;
+  lookY: number;
+  targetX: number;
+  targetY: number;
+  lookUntil: number;
+  /** Yeux écarquillés, 0 à 1. */
+  alarm: number;
+  /** Piqué : direction, début de la plongée. */
+  fleeDir: number;
+  diveAt: number;
+}
+
+const DEFAULTS = {
+  ...SHARED_TUNING,
+  detail: 1.7,
+  density: 0.6,
+  speed: 1,
+  sway: 0.03,
+  spread: 0,
+  farthest: 0.4,
+  farBias: 1,
+  grip: 3,
+  separation: 200,
+  trail: 0,
+  shimmer: 0.05,
+  sparkle: 0.03,
+  wingbeat: 1,
+  glide: 1,
+  headTurn: 1,
+  scare: 1,
+};
+
+const SUN: RGB = [255, 176, 103];
+const CORAL: RGB = [255, 111, 97];
+const VIOLET: RGB = [138, 116, 255];
+const TEXT: RGB = [236, 238, 247];
+const FACE: RGB = [196, 190, 226];
+const RING: RGB = [138, 116, 255];
+const BODY: RGB = [112, 100, 150];
+const CHEVRON: RGB = [74, 66, 112];
+const WING: RGB = [96, 86, 140];
+const WING_DARK: RGB = [58, 52, 92];
+const NIGHT: RGB = [4, 5, 10];
+
+const at = { x: 0, y: 0 };
+
+/** Hauteurs de la tête et des yeux sur le corps (u vers le haut de l'écran). */
+const HEAD_U = 0.14;
+
+export const owl: Animal<Owl> = {
+  key: "owl",
+  label: "hibou",
+  swatch: [255, 176, 103],
+  defaults: DEFAULTS,
+  controls: [
+    ["Vol", [
+      { key: "wingbeat", label: "Battement", min: 0.3, max: 2.5, step: 0.05, hint: "Vitesse des coups d'ailes." },
+      { key: "glide", label: "Glissade", min: 0, max: 4, step: 0.05, hint: "Fréquence des longues glissades ailes tendues." },
+    ]],
+    ["Regard", [
+      { key: "headTurn", label: "Rotation de la tête", min: 0, max: 2, step: 0.05, hint: "Amplitude du regard vers le dernier clic." },
+      { key: "scare", label: "Piqué", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée du piqué quand on clique près du hibou." },
+    ]],
+  ],
+  area: 160000,
+  scale: 2.3,
+  speed: 70,
+  trail: { light: [150, 140, 190], dark: [120, 110, 170] },
+
+  create: (c) => ({
+    ...c,
+    phase: rand(0, TAU),
+    glide: 0,
+    glideUntil: 0,
+    lookX: 0,
+    lookY: 0,
+    targetX: 0,
+    targetY: 0,
+    lookUntil: 0,
+    alarm: 0,
+    fleeDir: 0,
+    diveAt: 0,
+  }),
+
+  update(c, flock, dt) {
+    const k = flock.tuning as typeof DEFAULTS;
+    const t = flock.time;
+    const cruise = flock.cruise(c);
+    const course = flock.heading + c.bias * k.spread;
+    const fleeing = t < c.startledUntil;
+    flock.begin();
+    if (fleeing && t < c.diveAt) flock.steer(c, course, cruise * 0.3, k.grip); // il se fige, la tête pivote
+    else if (fleeing) flock.steer(c, c.fleeDir, cruise * (2.2 + 1.5 * k.scare), 6);
+    else flock.steer(c, course, cruise, k.grip);
+    flock.separate(c, k.separation, 0.45);
+    flock.move(c, dt, fleeing && t >= c.diveAt ? cruise * 4 : cruise * 1.5);
+    if (flock.passed(c)) flock.reenter(c);
+    flock.face(c, dt, 2, course);
+
+    // Glissades sur sa propre horloge.
+    if (c.glide < 0.5 && t > c.glideUntil && Math.random() < 0.3 * k.glide * dt) c.glideUntil = t + rand(2, 4.5);
+    c.glide += ((t < c.glideUntil ? 1 : 0) - c.glide) * Math.min(1, dt * 2);
+    c.phase += dt * TAU * 0.8 * k.wingbeat * (1 - 0.9 * c.glide);
+
+    // Le regard revient au centre quand le clic est oublié.
+    if (t > c.lookUntil) {
+      c.targetX = 0;
+      c.targetY = 0;
+    }
+    const e = Math.min(1, dt * 6);
+    c.lookX += (c.targetX - c.lookX) * e;
+    c.lookY += (c.targetY - c.lookY) * e;
+    c.alarm = Math.max(0, c.alarm - dt * 0.6);
+  },
+
+  startle(c, dx, dy, strength, flock) {
+    const k = flock.tuning as typeof DEFAULTS;
+    const n = Math.hypot(dx, dy) || 1;
+    // Le clic est à l'opposé de (dx, dy).
+    c.targetX = clamp((-dx / n) * 1.2, -1, 1);
+    c.targetY = clamp((-dy / n) * 1.2, -1, 1);
+    c.lookUntil = flock.time + 4;
+    c.alarm = 1;
+    if (k.scare <= 0) return;
+    c.fleeDir = Math.atan2(dy, dx) + rand(-0.25, 0.25);
+    c.diveAt = flock.time + 0.4;
+    c.startledUntil = c.diveAt + (0.8 + 1.4 * strength) * Math.sqrt(k.scare);
+  },
+
+  draw(c, pen, flock) {
+    const k = flock.tuning as typeof DEFAULTS;
+    const S = c.span;
+    const out = pen.ink;
+    // Vu de face : u vers le haut de l'écran, v latéral.
+    const pose = { x: c.x, y: c.y, heading: -Math.PI / 2, span: S, depth: c.depth, id: c.id };
+    pen.toWorld(pose, 0, 1, at);
+    const sx = Math.sign(at.x - c.x) || 1; // sens écran de +v
+
+    // Battement : f de -1 (haut) à 1 (bas), les ailes plongent pendant le piqué.
+    const diving = flock.time < c.startledUntil && flock.time >= c.diveAt;
+    const f = diving ? -0.7 : Math.sin(c.phase) * (1 - c.glide) + 0.15 * c.glide;
+    const reach = diving ? 0.6 : 1;
+    const wrist = { u: -0.02 + 0.1 * f, v: 0.24 * reach };
+    const tip = { u: -0.06 + 0.24 * f, v: 0.5 * reach };
+
+    // Regard : décalage du disque facial, de la pupille.
+    const lv = c.lookX * sx * k.headTurn;
+    const lu = -c.lookY * k.headTurn;
+    const headU = HEAD_U + lu * 0.015;
+    const headV = lv * 0.03;
+    const irisR = 0.056 + 0.016 * c.alarm;
+    const pupilR = 0.03 * (1 - 0.55 * c.alarm);
+
+    pen.shape(pose, 0.62, (u, v) => {
+      const av = Math.abs(v);
+      const sg = v < 0 ? -1 : 1;
+      // Yeux : centres sur chaque moitié du disque (le côté regardé est plus grand).
+      const eyeV = 0.082 * sg + headV * 1.2;
+      const eyeU = headU + 0.015;
+      const dEye = Math.hypot(u - eyeU, v - eyeV);
+      if (dEye < irisR + 0.014) {
+        const px = eyeU + lu * 0.022;
+        const py = eyeV + lv * 0.026;
+        const dp = Math.hypot(u - px, v - py);
+        if (Math.hypot(u - (px + 0.016), v - (py - 0.016 * sg)) < 0.011) return ink(out, ...TEXT, INK_SPOT);
+        if (dp < pupilR) return ink(out, ...NIGHT, INK_DARK);
+        if (dEye < irisR) return ink(out, ...SUN, INK_SPOT);
+        return ink(out, ...CORAL, INK_DARK);
+      }
+      // Bec en V, sous les yeux.
+      const bu = headU - 0.035 + lu * 0.01;
+      if (u < bu + 0.01 && u > bu - 0.06 && Math.abs(v - headV * 1.5) < 0.03 * (1 - (bu - u) / 0.07)) {
+        return ink(out, ...CORAL, INK_DARK, "v");
+      }
+      // Disque facial : deux cercles clairs, chacun cerclé d'un anneau.
+      const dFace = Math.hypot(u - headU, v - (0.09 * sg + headV));
+      if (dFace < 0.125) {
+        if (dFace > 0.108) return ink(out, ...RING, INK_DARK);
+        return ink(out, ...FACE, INK_BODY);
+      }
+      // Entre les deux cercles, le front.
+      if (inEllipse(u, v, headU + 0.02, headV, 0.1, 0.1)) return ink(out, ...FACE, INK_BODY);
+      // Aigrettes : deux pointes au-dessus de la tête.
+      if (toSegment(u, v, headU + 0.1, 0.07 * sg + headV, headU + 0.2, 0.12 * sg + headV) < 0.016) {
+        return ink(out, ...CHEVRON, INK_DARK);
+      }
+      // Corps duveteux, chevrons de plumage.
+      if (inEllipse(u, v, -0.1, 0, 0.17, 0.115) || inEllipse(u, av, -0.3, 0, 0.1, 0.05 + 0.1 * Math.max(0, u + 0.4))) {
+        const chev = frac((u + 0.9 * av) * 14);
+        if (u < 0.0 && chev < 0.28) return ink(out, ...CHEVRON, INK_BODY);
+        return ink(out, ...BODY, INK_BODY);
+      }
+      // Ailes larges, plumes digitées au bout.
+      const a = seg;
+      let d = toSegment(av, u, 0.09, -0.02, wrist.v, wrist.u);
+      let w = 0.1 - 0.025 * a.t;
+      let outer = false;
+      if (d >= w) {
+        d = toSegment(av, u, wrist.v, wrist.u, tip.v, tip.u);
+        w = 0.075 - 0.03 * a.t;
+        outer = true;
+      }
+      if (d >= w) return false;
+      // Doigts : fentes entre les plumes primaires.
+      if (outer && a.t > 0.55 && d > w * 0.15 && frac((u - tip.u + av * 0.3) * 11) < 0.22) return false;
+      if (outer && a.t > 0.3 && frac(av * 16) < 0.18) return ink(out, ...WING_DARK, INK_DARK);
+      return ink(out, ...(d < w * 0.45 ? WING : VIOLET), outer ? INK_BODY : INK_SCALE);
+    }, { light: 0.85 + 0.15 * Math.abs(f) });
+  },
+};
