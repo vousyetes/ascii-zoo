@@ -90,8 +90,8 @@ export const gorilla: Animal<Gorilla> = {
       { key: "thump", label: "Battements", min: 0.3, max: 3, step: 0.05, hint: "Nombre et vitesse des coups sur le torse après un clic." },
     ]],
   ],
-  area: 50000,
-  scale: 1.1,
+  area: 85000,
+  scale: 1.7,
   speed: 38,
   trail: { light: [60, 66, 90], dark: [70, 76, 104] },
 
@@ -236,6 +236,9 @@ export const gorilla: Animal<Gorilla> = {
     const hipPt = { u: hipU + 0.02, h: hipH - 0.02 };
     const shPt = { u: armU, h: armH };
 
+    // Pelage : hachures obliques, plus sombres, qui suivent le corps.
+    const fur = (u: number, h: number) => Math.floor((u * 0.8 - h * 1.0 + 9) / 0.018) % 3 === 0;
+
     // Un membre à deux segments, avec un coude ou un genou décalé.
     const limb = (u: number, h: number, a: { u: number; h: number }, b: { u: number; h: number }, bu: number, bh: number, r: number) => {
       const mu = (a.u + b.u) / 2 + bu;
@@ -245,19 +248,22 @@ export const gorilla: Animal<Gorilla> = {
       return Math.min(q1, q2);
     };
     // Membre proche : clair au centre, contour sombre pour le separer du torse.
-    const nearLimb = (q: number) => (q < 0.8 ? ink(out, ...LIMB, INK_BODY) : q < 1 && ink(out, ...FACE, INK_DARK));
+    const nearLimb = (q: number, u: number, h: number) => (q < 0.8 ? (fur(u, h) ? ink(out, ...FAR, INK_DARK) : ink(out, ...LIMB, INK_BODY)) : q < 1 && ink(out, ...FACE, INK_DARK));
 
     pen.shape(pose, 0.8, (u, v) => {
       const h = -v * f;
 
       // Bras proche : devant tout.
-      if (nearLimb(limb(u, h, shPt, handNear, -0.06, 0.02, 0.065))) return true;
-      if (inEllipse(u, h, handNear.u + 0.01, handNear.h - 0.01, 0.08, 0.06)) return ink(out, ...FACE, INK_DARK);
+      if (nearLimb(limb(u, h, shPt, handNear, -0.06, 0.02, 0.065), u, h)) return true;
+      if (inEllipse(u, h, handNear.u + 0.01, handNear.h - 0.01, 0.08, 0.06)) return Math.floor((u - handNear.u + 0.08) / 0.03) % 2 === 0 ? ink(out, ...FACE, INK_DARK) : ink(out, ...MUZZLE, INK_BODY);
 
       // Tête : crâne, crête sagittale, front marqué, museau plat.
       const hx = u - headU;
       const hy = h - headH;
       if (inEllipse(hx, hy, 0, 0, 0.09, 0.08)) {
+        if (hx > 0.04 && Math.abs(hy + 0.055) < 0.008) return ink(out, ...VIOLET, INK_DARK); // arcade sourcilière
+        if (hx > 0.1 && Math.abs(hy + 0.035) < 0.007) return ink(out, ...FACE, INK_DARK); // narines
+        if (hx > 0.05 && Math.abs(hy + 0.075) < 0.005) return ink(out, ...FACE, INK_DARK); // bouche
         if (inEllipse(hx, hy, 0.085, -0.03, 0.055, 0.05)) return ink(out, ...MUZZLE, INK_BODY);
         if (hy > 0.03 && hx > 0.0 && hx < 0.09 && hy < 0.055 + 0.03 * (hx / 0.09)) return ink(out, ...FACE, INK_DARK);
         return ink(out, ...FACE, INK_BODY);
@@ -266,7 +272,7 @@ export const gorilla: Animal<Gorilla> = {
       if (inEllipse(hx, hy, -0.03, 0.085, 0.075, 0.06)) return ink(out, ...BODY, INK_BODY);
 
       // Jambe proche.
-      if (nearLimb(limb(u, h, hipPt, footNear, 0.07, 0.03, 0.075))) return true;
+      if (nearLimb(limb(u, h, hipPt, footNear, 0.07, 0.03, 0.075), u, h)) return true;
       if (inEllipse(u, h, footNear.u + 0.03, footNear.h, 0.09, 0.04)) return ink(out, ...FACE, INK_DARK);
 
       // Torse : capsule hanches-épaules, plus large aux épaules, qui respire.
@@ -283,10 +289,10 @@ export const gorilla: Animal<Gorilla> = {
         const q = hump ? Math.hypot(sx, sy) / (0.17 * br) : d / rad;
         if (back && along > 0.05 && along < 0.9 && side > 0.0 && q < 0.9) {
           // Dos argenté : plus clair vers le milieu, plus bas en croupe.
-          return ink(out, ...(along < 0.4 ? SILVER_LOW : SILVER), INK_BODY);
+          return fur(u, h) ? ink(out, ...SILVER_LOW, INK_DARK) : ink(out, ...(along < 0.4 ? SILVER_LOW : SILVER), INK_BODY);
         }
         if (q > 0.8) return ink(out, ...(back ? VIOLET : CYAN), INK_BODY);
-        return ink(out, ...BODY, INK_BODY);
+        return fur(u, h) ? ink(out, ...FAR, INK_DARK) : ink(out, ...BODY, INK_BODY);
       }
 
       // Bras éloigné et jambe éloignée, plus sombres, derrière le torse.
