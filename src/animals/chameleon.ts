@@ -27,7 +27,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
   fog: 0.2,
-  density: 1.2,
+  density: 1.5,
   farthest: 0.55,
   farBias: 1.2,
   sway: 0.02,
@@ -92,8 +92,8 @@ export const chameleon: Animal<Chameleon> = {
       { key: "curl", label: "Spirale", min: 0, max: 2, step: 0.05, hint: "Amplitude avec laquelle la queue s'enroule et se déroule." },
     ]],
   ],
-  area: 70000,
-  scale: 1.3,
+  area: 62000,
+  scale: 1.1,
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
@@ -145,6 +145,24 @@ export const chameleon: Animal<Chameleon> = {
       ty[i] = 0.04 + r * Math.sin(a);
     }
 
+    // Queue : trait fin continu qui s'affine, tracé en segments d'une cellule.
+    for (let i = 0; i < TAIL_N; i++) {
+      const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
+      const m = 1.25 - 0.5 * (i / TAIL_N);
+      const tc: RGB = [Math.min(255, r * m), Math.min(255, g * m), Math.min(255, b * m)];
+      pen.lineBody(pose, tx[i], ty[i] * f, tx[i + 1], ty[i + 1] * f, tc);
+    }
+
+    // Langue : jaillit toutes les 6 à 10 s selon l'individu, ligne fine et renflement.
+    const per = 6 + 4 * frac(c.phase * 7.3);
+    const tp = ((time + c.phase * 20) % per) / per;
+    if (tp < 0.07) {
+      const e = Math.sin((tp / 0.07) * Math.PI);
+      const tipU = 0.4 + 0.2 * e;
+      pen.lineBody(pose, 0.39, 0.0 * f, tipU, -0.005 * f, [255, 130, 150]);
+      pen.lineBody(pose, tipU, -0.005 * f, tipU + 0.012, -0.005 * f, [255, 90, 120], "o");
+    }
+
     // Pattes : une seule levée à la fois. Celles de l'autre flanc, plus sombres, passent derrière.
     const LEGS = [
       [0.12, 0, 1],
@@ -158,20 +176,20 @@ export const chameleon: Animal<Chameleon> = {
       const lift = swing ? Math.sin((m / 0.25) * Math.PI) : 0;
       const reach = swing ? -0.06 + 0.12 * (m / 0.25) : 0.06 - 0.12 * ((m - 0.25) / 0.75);
       const hipY = 0.06;
-      const kneeU = hu + reach * 0.4 + 0.04;
-      const kneeY = 0.2 - 0.05 * lift;
+      const kneeU = hu + reach * 0.3 + (hu > 0 ? 0.05 : -0.05);
+      const kneeY = 0.17 - 0.05 * lift;
       const footU = hu + reach;
       const footY = 0.32 - 0.07 * lift;
       const [r, g, b] = skin(c, time, k, -hu);
       const lc: RGB = [r * dim, g * dim, b * dim];
       // Chaque segment est doublé (léger décalage) pour épaissir la patte.
-      for (const d of [-0.012, 0, 0.012]) {
+      for (const d of [0]) {
         pen.lineBody(pose, hu + d, hipY * f, kneeU + d, kneeY * f, lc);
         pen.lineBody(pose, kneeU + d, kneeY * f, footU + d, footY * f, lc);
       }
       // Pince : deux doigts opposés, un vers l'avant, un vers l'arrière.
-      pen.lineBody(pose, footU, footY * f, footU + 0.07, (footY + 0.03) * f, lc, "<");
-      pen.lineBody(pose, footU, footY * f, footU - 0.06, (footY + 0.03) * f, lc, ">");
+      pen.lineBody(pose, footU, footY * f, footU + 0.06, (footY + 0.025) * f, lc, "<");
+      pen.lineBody(pose, footU, footY * f, footU - 0.05, (footY + 0.025) * f, lc, ">");
     }
 
     // Éclaircit une couleur (même teinte, plus lumineuse) : m > 1 vers le blanc, m < 1 vers le sombre.
@@ -183,18 +201,18 @@ export const chameleon: Animal<Chameleon> = {
     pen.shape(pose, 0.75, (u, v) => {
       const y = v * f;
       const inBody =
-        inEllipse(u, y, 0, 0.0, 0.2, 0.14) || // corps comprimé
-        inEllipse(u, y, 0.02, 0.04, 0.16, 0.12) || // ventre rond
-        inEllipse(u, y, -0.04, -0.07, 0.14, 0.1) || // dos arqué
-        inEllipse(u, y, 0.26, -0.03, 0.1, 0.075) || // tête
-        inEllipse(u, y, 0.35, -0.01, 0.05, 0.04) || // museau arrondi
-        toSegment(u, y, 0.3, -0.1, 0.12, -0.2) < 0.03 * (1 - seg.t * 0.9) || // casque pointu vers l'arrière
-        inEllipse(u, y, 0.27, -0.09, 0.05, 0.035); // arcade
+        inEllipse(u, y, 0, 0.0, 0.19, 0.1) || // corps comprimé
+        inEllipse(u, y, 0.02, 0.025, 0.15, 0.085) || // ventre
+        inEllipse(u, y, -0.04, -0.05, 0.13, 0.07) || // dos arqué
+        inEllipse(u, y, 0.25, -0.03, 0.08, 0.055) || // tête
+        toSegment(u, y, 0.3, -0.02, 0.4, 0.0) < 0.022 * (1 - seg.t * 0.8) || // museau effilé
+        toSegment(u, y, 0.29, -0.08, 0.12, -0.19) < 0.02 * (1 - seg.t * 0.95) || // casque pointu fin
+        inEllipse(u, y, 0.27, -0.08, 0.04, 0.025); // arcade
       let spine = false;
       if (!inBody && y < -0.05 && y > -0.2 && u > -0.22 && u < 0.15) {
         for (const su of SPINES) {
-          const by = -0.07 - 0.1 * Math.sqrt(Math.max(0, 1 - ((su + 0.04) / 0.14) ** 2)) + 0.01;
-          if (toSegment(u, y, su, by, su - 0.012, by - 0.045) < 0.013 * (1 - seg.t * 0.8)) spine = true;
+          const by = -0.05 - 0.08 * Math.sqrt(Math.max(0, 1 - ((su + 0.04) / 0.14) ** 2)) + 0.01;
+          if (toSegment(u, y, su, by, su - 0.01, by - 0.04) < 0.008 * (1 - seg.t * 0.8)) spine = true;
         }
       }
       if (inBody || spine) {
@@ -203,40 +221,31 @@ export const chameleon: Animal<Chameleon> = {
         const [r, g, b] = skin(c, time, k, -u);
         if (spine) return tone(r, g, b, 0.7);
         const ex = u - 0.275;
-        const ey = y + 0.055;
+        const ey = y + 0.05;
         const d2 = ex * ex + ey * ey;
-        if (d2 < 0.018 * 0.018) return ink(out, ...DARK, INK_DARK); // pupille
-        if (d2 < 0.034 * 0.034) return tone(r, g, b, 1.75); // anneau clair du cône
-        if (d2 < 0.048 * 0.048) return ink(out, ...DARK, INK_DARK); // orbite sombre
+        if (d2 < 0.011 * 0.011) return ink(out, ...DARK, INK_DARK); // pupille
+        if (d2 < 0.026 * 0.026) return tone(r, g, b, 1.75); // anneau clair du cône
+        if (d2 < 0.034 * 0.034) return ink(out, ...DARK, INK_DARK); // orbite sombre
         // Dégradé dorsal sombre vers ventre clair, même teinte.
         let m = 0.8 + 0.5 * Math.min(1, Math.max(0, (y + 0.15) / 0.3));
         if (u < 0.2) {
           // Bande claire latérale.
-          if (Math.abs(y - 0.0) < 0.014) m = 1.55;
+          if (Math.abs(y - 0.06) < 0.008) m = 1.7;
           else {
             // Losanges d'écailles plus sombres le long du flanc.
-            const du = Math.abs(frac(u / 0.07) - 0.5);
+            const du = Math.abs(frac(u / 0.06) - 0.5);
             const dv = Math.abs(frac((y + 0.035 * Math.floor(u / 0.07)) / 0.08) - 0.5);
             if (du + dv * 0.9 < 0.22 && y > -0.1 && y < 0.1) m *= 0.62;
           }
         }
         return tone(r, g, b, m);
       }
-      if (u > -0.17 || y < -0.14 || y > 0.2) return false; // hors de la boîte de la queue
-      for (let i = 0; i < TAIL_N; i++) {
-        const th = 0.045 * (1 - 0.6 * (i / TAIL_N));
-        if (toSegment(u, y, tx[i], ty[i], tx[i + 1], ty[i + 1]) < th) {
-          const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
-          if (i % 4 === 0 && seg.t < 0.2) return ink(out, ...DARK, INK_DARK);
-          return tone(r, g, b, 1.3 - 0.6 * (i / TAIL_N));
-        }
-      }
       return false;
     });
 
     // Oeil conique : un point lumineux qui balaie, indépendant du corps.
     const ex = 0.275 + 0.012 * Math.sin(c.eye);
-    const ey = -0.062 + 0.008 * Math.cos(c.eye * 0.8);
+    const ey = -0.055 + 0.008 * Math.cos(c.eye * 0.8);
     pen.toWorld(pose, ex, ey * f, at);
     pen.spot(at.x, at.y, "·", GLINT, DARK, c.depth);
   },
