@@ -21,6 +21,52 @@ interface Chameleon extends Creature {
   flash: number;
   /** +1 s'il va vers la droite, -1 vers la gauche : garde le dos en haut de l'écran. */
   flip: 1 | -1;
+  /** Branche sur laquelle il vit (0 la plus lointaine, N-1 la plus proche). */
+  br: number;
+  /** Il marche (1) ou il fait une pause (0) : allure lissée. */
+  go: number;
+  moving: boolean;
+  until: number;
+  /** Inclinaison du corps suivant la pente de la branche. */
+  tilt: number;
+}
+
+// ── branches : quelques grandes branches qui traversent l'écran, les caméléons marchent dessus ──
+const N_BRANCH = 3;
+interface Branch { xs: Float32Array; ys: Float32Array; depth: number }
+let branches: Branch[] = [];
+let branchKey = "";
+
+/** Branches fixes pour une taille d'écran : trois courbes douces, de la plus lointaine à la plus proche. */
+function buildBranches(W: number, H: number, farthest: number, farBias: number): Branch[] {
+  const out: Branch[] = [];
+  const step = 18;
+  const n = Math.ceil((W + 160) / step) + 1;
+  for (let b = 0; b < N_BRANCH; b++) {
+    const roll = (b + 0.5) / N_BRANCH;
+    const depth = farthest + (1 - farthest) * Math.pow(roll, farBias);
+    const y0 = H * (0.2 + 0.3 * b) + 20 * b;
+    const amp = H * (0.035 + 0.01 * b);
+    const f1 = 0.0042 + 0.0011 * b;
+    const ph = b * 2.1 + 0.7;
+    const slope = (b % 2 ? 1 : -1) * H * 0.05;
+    const xs = new Float32Array(n);
+    const ys = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = -80 + i * step;
+      xs[i] = x;
+      ys[i] = y0 + amp * Math.sin(x * f1 + ph) + 0.4 * amp * Math.sin(x * f1 * 2.3 + ph * 1.7) + slope * (x / W - 0.5);
+    }
+    out.push({ xs, ys, depth });
+  }
+  return out;
+}
+
+function branchY(b: Branch, x: number) {
+  const { xs, ys } = b;
+  const t = Math.min(xs.length - 1.001, Math.max(0, (x - xs[0]) / (xs[1] - xs[0])));
+  const i = Math.floor(t);
+  return ys[i] + (ys[i + 1] - ys[i]) * (t - i);
 }
 
 const DEFAULTS = {
@@ -97,26 +143,47 @@ export const chameleon: Animal<Chameleon> = {
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
-  create: (c) => ({ ...c, phase: rand(0, 1), gait: rand(0, TAU), eye: rand(0, TAU), flash: 0, flip: 1 }),
+  create: (c) => ({ ...c, phase: rand(0, 1), gait: rand(0, TAU), eye: rand(0, TAU), flash: 0, flip: Math.random() < 0.5 ? 1 : -1, br: 0, go: 1, moving: true, until: 0, tilt: 0 }),
 
   enter(c, flock) {
-    c.heading = flock.heading;
-    c.flip = Math.cos(c.heading) < 0 ? -1 : 1;
+    // Il apparait quelque part sur sa branche ; la branche dépend de sa profondeur (les lointains en haut).
+    c.br = Math.min(N_BRANCH - 1, Math.floor(c.roll * N_BRANCH));
+    c.x = rand(0, flock.width);
+    c.until = flock.time + rand(1, 5);
   },
 
   update(c, flock, dt) {
     const k = flock.tuning as typeof DEFAULTS;
-    const boost = flock.time < c.startledUntil ? 2.6 : 1;
-    const course = flock.heading + c.bias * k.spread;
-    flock.begin();
-    flock.steer(c, course, flock.cruise(c) * boost, k.grip);
-    flock.separate(c);
-    flock.move(c, dt, flock.cruise(c) * 3);
-    if (flock.passed(c)) flock.reenter(c);
-    c.heading = course;
-    // Toujours debout : il regarde du côté où il va (avec un peu d'hystérésis), il ne pivote jamais.
-    if (Math.abs(c.vx) > 3) c.flip = c.vx > 0 ? 1 : -1;
-    c.gait += dt * 0.9 * k.step * boost;
+    const key = `${Math.round(flock.width)}x${Math.round(flock.height)}`;
+    if (key !== branchKey) {
+      branchKey = key;
+      branches = buildBranches(flock.width, flock.height, k.farthest, k.farBias);
+    }
+    const t = flock.time;
+    c.br = Math.min(N_BRANCH - 1, Math.floor(c.roll * N_BRANCH));
+    const boost = t < c.startledUntil ? 2.6 : 1;
+    // Marche, pause, et parfois il fait demi-tour : sur une branche ils se croisent dans les deux sens.
+    if (t >= c.until) {
+      c.moving = !c.moving;
+      c.until = t + (c.moving ? rand(3, 9) : rand(1.2, 4));
+      if (c.moving && Math.random() < 0.3) c.flip = c.flip > 0 ? -1 : 1;
+    }
+    c.go += ((c.moving ? 1 : 0) - c.go) * Math.min(1, dt * 2.5);
+    const sp = flock.cruise(c) * 0.9 * boost * c.go * k.speed;
+    c.vx = c.flip * sp;
+    c.x += c.vx * dt;
+    const W = flock.width, m = c.span;
+    if (c.x > W + m) c.x = -m;
+    else if (c.x < -m) c.x = W + m;
+    // Les pieds posés sur la branche, le corps suit la pente.
+    const b = branches[c.br];
+    const by = branchY(b, c.x);
+    const slope = (branchY(b, c.x + 12) - branchY(b, c.x - 12)) / 24;
+    c.y = by - 0.3 * c.span - 0.004 * c.span * Math.sin(c.gait * 2);
+    c.tilt = Math.atan(slope) * 0.8;
+    c.vy = 0;
+    c.heading = c.flip > 0 ? 0 : Math.PI;
+    c.gait += dt * 0.9 * k.step * boost * (0.25 + 0.75 * c.go);
     c.eye += dt * 1.3;
     c.flash = Math.max(0, c.flash - dt * 0.8);
   },
@@ -126,6 +193,42 @@ export const chameleon: Animal<Chameleon> = {
     c.startledUntil = flock.time + 1;
   },
 
+  drawAll(flock, pen) {
+    const k = flock.tuning as typeof DEFAULTS;
+    const W = flock.width;
+    // Branches : bois chaud en cellules pleines (une rangée centrale claire, deux rangées d'ombre), rameaux et feuilles.
+    const cw = pen.cw, ch = pen.ch;
+    const bark: RGB = [196, 138, 104];
+    const barkFill: RGB = [96, 62, 52];
+    const bark2: RGB = [150, 100, 80];
+    const bark2Fill: RGB = [62, 40, 40];
+    const iconMode = typeof document !== "undefined" && document.body.classList.contains("icon-mode");
+    for (let bi = 0; bi < (iconMode ? 0 : branches.length); bi++) {
+      const b = branches[bi];
+      const rows = bi === 0 ? 1 : 2; // les lointaines sont plus fines
+      for (let x = -cw; x < W + cw; x += cw) {
+        const y = branchY(b, x);
+        const wob = ((Math.floor(x / cw) * 7 + bi * 13) % 5) * 0.4;
+        for (let r = 0; r < rows + 1; r++) {
+          const yy = y + (r - rows / 2) * ch * 0.95;
+          const top = r === 0;
+          pen.spot(x, yy, top ? "=" : r === rows ? "~" : "#", top ? bark : bark2, top ? barkFill : bark2Fill, b.depth);
+        }
+        // Rameau + feuilles tous les ~9 cellules.
+        const cell = Math.floor(x / cw);
+        if ((cell + bi * 4) % 9 === 0) {
+          const dir = ((cell + bi) % 2 ? 1 : -1);
+          const len = 3 + ((cell * 5 + bi) % 3);
+          for (let j = 1; j <= len; j++) {
+            pen.spot(x + dir * j * cw * 0.7, y - ch * (0.9 + j * 0.8) - wob, j === len ? "*" : "/", j === len ? ([126, 226, 168] as RGB) : bark2, j === len ? ([20, 70, 56] as RGB) : bark2Fill, b.depth);
+          }
+        }
+      }
+    }
+    for (const c of flock.creatures) chameleon.draw!(c, pen, flock);
+    void k;
+  },
+
   draw(c, pen, flock) {
     const k = flock.tuning as typeof DEFAULTS;
     const out = pen.ink;
@@ -133,7 +236,7 @@ export const chameleon: Animal<Chameleon> = {
     const time = flock.time;
     const f = c.flip;
     // Balancement avant/arrière : le corps tangue avec la marche.
-    const pose = { x: c.x, y: c.y, heading: (f > 0 ? 0 : Math.PI) + 0.05 * Math.sin(c.gait * 0.5), span: S, depth: c.depth, id: c.id };
+    const pose = { x: c.x, y: c.y, heading: (f > 0 ? 0 : Math.PI) + f * c.tilt + 0.04 * Math.sin(c.gait * 0.5), span: S, depth: c.depth, id: c.id };
     const at = { x: 0, y: 0 };
 
     // Queue : spirale qui se resserre et se desserre doucement.
