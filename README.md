@@ -2,7 +2,7 @@
 
 <p align="center"><img src="docs/hero.jpg" alt="Seahorses, rhinos, elephants, flamingos, axolotls and owls drawn in ASCII on a black grid" width="100%"></p>
 
-<p align="center"><a href="https://vousyetes.github.io/ascii-animals-vye/"><b>Voir la démo live</b></a></p>
+<p align="center"><a href="https://animaux-vy.pages.dev/"><b>Voir la démo live</b></a></p>
 
 Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
 
