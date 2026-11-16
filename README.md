@@ -1,5 +1,9 @@
 # vousyetes : animaux ASCII
 
+<p align="center"><img src="docs/hero.jpg" alt="Seahorses, rhinos, elephants, flamingos, axolotls and owls drawn in ASCII on a black grid" width="100%"></p>
+
+<p align="center"><a href="https://vousyetes.github.io/ascii-animals-vye/"><b>Voir la démo live</b></a></p>
+
 Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
 
 **Les 14 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant, hippopotame, hippocampe. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
@@ -9,6 +13,8 @@ Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version v
 ```sh
 npm install && npm run dev
 ```
+
+<p align="center"><img src="docs/desktop.jpg" alt="Desktop view" width="100%"></p>
 
 ## Crédits et licence
 

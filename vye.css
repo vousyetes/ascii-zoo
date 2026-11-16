@@ -15,8 +15,7 @@
 }
 body { font-family: Archivo, ui-sans-serif, system-ui, sans-serif; font-stretch: 100%; }
 canvas { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
-canvas, .aurora, .vye-title, .credit { }
-
+canvas, .aurora, .vye-title, 
 /* Aurore très basse dans les coins : le noir domine. Par-dessus le canvas, sans toucher aux clics. */
 .aurora {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
@@ -54,18 +53,11 @@ body::before {
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 0 24px rgba(255, 111, 97, 0.35));
 }
-.credit {
-  position: fixed; z-index: 5; left: 16px; right: 16px; bottom: 14px; text-align: center;
-  font: 400 11px "JetBrains Mono", monospace; letter-spacing: 0.04em; color: var(--muted);
-}
-.credit a { color: var(--cyan); text-decoration: none; }
-.credit a:hover { text-decoration: underline; }
 .tweaks-open { bottom: auto; top: 18px; }
 @media (max-width: 700px) { .tweaks-open { display: none; } }
 
 /* Finitions : zones tactiles 44 px, bord fondu quand la barre défile, crédit lisible. */
 .choices { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
 @media (pointer: coarse) { .choices button { height: 40px; } .choices { padding: 2px; } }
-.credit { font-size: 12px; }
 .choices button:focus-visible { outline: 2px solid var(--cyan); }
 @media (prefers-reduced-motion: reduce) { .choices .thumb { transition: none; } }
