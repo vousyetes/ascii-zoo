@@ -4,11 +4,13 @@
 
 <p align="center"><a href="https://animaux-vy.pages.dev/"><b>Voir la démo live</b></a></p>
 
-Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
+Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 20 animaux, panneau Tweaks.
 
 **Les 14 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant, hippopotame, hippocampe. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
 
 **État honnête :** éléphant, escargot, colibri, flamant, axolotl, poulpe, caméléon, paon, rhino (gris, deux cornes) et hippocampe (beaucoup de variantes) se lisent bien. Gorille et hippopotame sont corrects mais à affiner, la raie manta est parfois coupée par le bord. Les comportements au clic ont été vus pour la plupart, pas tous. `scripts/shot.mjs` capture un animal en 9:16 pour itérer.
+
+**Inspiré du prompt « Terrarium » :** salamandres (corps en chaîne, 6 motifs dont l'axolotl, grillons au clic, coup de langue), lucioles qui se synchronisent (modèle de Kuramoto, nectar au clic), fourmis qui rapportent du sucre au nid. Caméléons sur de grandes branches.
 
 ```sh
 npm install && npm run dev
