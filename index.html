@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Des animaux dessinés en ASCII qui traversent l'écran. Version vousyetes du moteur ascii-animals (MIT)." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2304050A'/%3E%3Crect x='8' y='8' width='16' height='16' fill='%23FF6F61'/%3E%3C/svg%3E" />
+    <title>vousyetes : animaux ASCII</title>
+    <script>
+      // Only Chromium can run an SVG filter inside backdrop-filter; everyone else gets frosted glass.
+      if (/Chrome\//.test(navigator.userAgent)) document.documentElement.classList.add("liquid");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="/ascii-animals-vye/assets/index-CCBMhg4w.js"></script>
+    <link rel="stylesheet" crossorigin href="/ascii-animals-vye/assets/index-Bc2Eyxhb.css">
+  </head>
+  <body>
+    <canvas aria-hidden="true"></canvas>
+
+    <!-- Displacement map for the liquid-glass refraction. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="liquid-glass" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.007 0.011" numOctaves="2" seed="11" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2" result="map" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="40" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <button class="side-toggle" type="button" aria-expanded="false" aria-controls="side">[ animaux ]</button>
+    <aside class="side" id="side" aria-label="Animaux">
+      <p class="side-label">animaux <span class="side-count"></span></p>
+      <div class="side-list" role="radiogroup" aria-label="Animal"></div>
+      <footer class="side-foot">
+        <button class="side-calm" type="button" aria-pressed="false" title="Calme : tous dans le même sens. Croisé : ils vont dans tous les sens.">
+          <span class="k">sens</span><span class="state">croisé</span>
+        </button>
+        <p>clic = ils réagissent</p>
+      </footer>
+    </aside>
+
+    <div class="aurora" aria-hidden="true"></div>
+    <header class="vye-title">
+      <p class="vye-tag">david@vousyetes ~ $ ./animaux</p>
+      <h1>vous<span class="lumiere">yetes</span></h1>
+    </header>
+
+  </body>
+</html>
