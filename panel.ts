@@ -80,7 +80,7 @@ function changed<T extends object>(values: T, defaults: T): Partial<T> {
 }
 
 function applyGlass(g: Glass) {
-  // Vous y êtes : plus de composeur Dia, le verre se règle sur la barre des animaux.
+  // vousyetes : plus de composeur Dia, le verre se règle sur la barre des animaux.
   const composer = document.querySelector<HTMLElement>(".choices");
   composer?.style.setProperty("--blur", `${g.blur}px`);
   document.documentElement.style.setProperty("--tint", String(g.tint));

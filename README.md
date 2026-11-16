@@ -1,6 +1,6 @@
-# Vous y êtes : animaux ASCII
+# vousyetes : animaux ASCII
 
-Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version Vous y êtes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
+Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
 
 **Les 14 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant, hippopotame, hippocampe. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
 
@@ -15,7 +15,7 @@ npm install && npm run dev
 - Moteur et 7 animaux d'origine : [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) de Stephen Zhang et drewdi (MIT).
 - Le moteur d'ascii-animals est lui-même construit sur [ascii-sharks](https://github.com/stackedlol/ascii-sharks) de stackedlol (MIT).
 - Cette version : MIT aussi. Les notices de copyright d'origine sont conservées dans `LICENSE`.
-- Changements Vous y êtes : charte, 12 nouveaux animaux, interface. Le composeur de chat façon Dia et son logo ont été retirés.
+- Changements vousyetes : charte, 12 nouveaux animaux, interface. Le composeur de chat façon Dia et son logo ont été retirés.
 
 ---
 

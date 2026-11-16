@@ -8,7 +8,7 @@ import { mountChoices } from "./ui";
  */
 const STORE = "ascii-animals:";
 
-/** Vous y êtes garde trois animaux : lisibles en 9:16, et leurs couleurs sont celles de la charte. */
+/** vousyetes garde trois animaux : lisibles en 9:16, et leurs couleurs sont celles de la charte. */
 const KEPT: AnimalKey[] = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse"];
 
 const FR: Partial<Record<AnimalKey, string>> = { jellyfish: "méduse", koi: "koï", butterflies: "papillon", rhino: "rhino", gorilla: "gorille", chameleon: "caméléon", peacock: "paon", octopus: "poulpe", snail: "escargot", axolotl: "axolotl", owl: "hibou", manta: "raie manta", hummingbird: "colibri", elephant: "éléphant", flamingo: "flamant", hippo: "hippopotame", seahorse: "hippocampe" };

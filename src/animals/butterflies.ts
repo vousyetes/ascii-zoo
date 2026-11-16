@@ -84,7 +84,7 @@ interface Butterfly extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   density: 1.05,
-  hueShift: -20, // Vous y êtes : du bleu morpho vers le cyan signal #5CC8FF
+  hueShift: -20, // vousyetes : du bleu morpho vers le cyan signal #5CC8FF
   speed: 1.05,
   sway: 0,
   spread: 0,
