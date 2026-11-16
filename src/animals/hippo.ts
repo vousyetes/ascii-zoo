@@ -29,7 +29,7 @@ interface Hippo extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 3.0,
-  density: 1.0,
+  density: 1.3,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.35,
@@ -46,9 +46,9 @@ const DEFAULTS = {
 const BODY: RGB = [140, 146, 162];
 const FLANK: RGB = [88, 94, 110];
 const BELLY: RGB = [62, 66, 80];
-const PINK: RGB = [214, 150, 170];
+const PINK: RGB = [158, 120, 132];
 const IVORY: RGB = [240, 238, 228];
-const MOUTH: RGB = [120, 50, 60];
+const MOUTH: RGB = [34, 16, 22];
 const EYE: RGB = [236, 238, 247];
 const EYE_BG: RGB = [14, 10, 20];
 
@@ -73,8 +73,8 @@ export const hippo: Animal<Hippo> = {
       { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
     ]],
   ],
-  area: 90000,
-  scale: 1.6,
+  area: 55000,
+  scale: 1.15,
   speed: 34,
   trail: { light: [130, 136, 152], dark: [140, 146, 162] },
 
@@ -144,7 +144,7 @@ export const hippo: Animal<Hippo> = {
       return { fu: l.hu + 0.04 * Math.sin(l.ph + c.gait), v: 0.34 - 0.035 * lift, lift };
     });
     // Mâchoire inférieure : charnière en fu 0.26, le dessus de la mandibule descend vers l'avant.
-    const jawTop = (fu: number) => 0.03 + g * 0.22 * Math.max(0, (fu - 0.26) / 0.34);
+    const jawTop = (fu: number) => 0.03 + g * 0.12 * Math.max(0, (fu - 0.26) / 0.34);
     const SCAR: RGB = [196, 202, 216];
 
     pen.shape(pose, 0.7, (u, v) => {
