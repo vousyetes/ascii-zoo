@@ -6,14 +6,23 @@ const require = createRequire("/Users/vousyetes/.npm/_npx/9833c18b2d85bc59/node_
 const { chromium } = require("playwright");
 const all = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "salamander", "firefly", "ants", "frogs"];
 const keys = process.argv.length > 2 ? process.argv.slice(2) : all;
-const RATIO = 60 / 44;
+const RATIO = 46 / 31;
 mkdirSync("public/icons", { recursive: true });
 const b = await chromium.launch({ executablePath: process.env.CHROME || undefined });
 const p = await b.newPage({ viewport: { width: 900, height: 700 }, deviceScaleFactor: 3 });
 for (const k of keys) {
+  if (k === "firefly") {
+    const q = await b.newPage({ viewport: { width: 210, height: 142 }, deviceScaleFactor: 3 });
+    await q.goto("http://localhost:5199/?animal=firefly&count=3&icon=1");
+    await q.waitForTimeout(4200);
+    writeFileSync("public/icons/firefly.png", await q.screenshot());
+    await q.close();
+    console.log(k, "scene");
+    continue;
+  }
   // Quatre essais par animal (pose différente à chaque chargement) : on garde le plus rempli.
   let best = null;
-  for (let t = 0; t < 4; t++) {
+  for (let t = 0; t < 3; t++) {
     await p.goto(`http://localhost:5199/?animal=${k}&count=1&icon=1`);
     await p.waitForFunction(() => window.__iconReady === true, null, { timeout: 15000 });
     const box = await p.evaluate(() => {
@@ -22,22 +31,24 @@ for (const k of keys) {
       const { width: w, height: h } = c;
       const d = g.getImageData(0, 0, w, h).data;
       const dpr = w / c.getBoundingClientRect().width;
-      let x0 = w, y0 = h, x1 = 0, y1 = 0, lit = 0;
+      const xsA = [], ysA = [];
       const step = 3;
       for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) {
         const i = (y * w + x) * 4;
-        if (Math.max(d[i], d[i + 1], d[i + 2]) > 120) {
-          lit++;
-          if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
-        }
+        if (Math.max(d[i], d[i + 1], d[i + 2]) > 150) { xsA.push(x); ysA.push(y); }
       }
+      const lit = xsA.length;
+      if (!lit) return { x: 0, y: 0, w: 0, h: 0, lit: 0 };
+      xsA.sort((m, n) => m - n); ysA.sort((m, n) => m - n);
+      const q = (arr, f) => arr[Math.min(arr.length - 1, Math.floor(arr.length * f))];
+      const x0 = q(xsA, 0.005), x1 = q(xsA, 0.995), y0 = q(ysA, 0.005), y1 = q(ysA, 0.995);
       return { x: x0 / dpr, y: y0 / dpr, w: (x1 - x0) / dpr, h: (y1 - y0) / dpr, lit };
     });
     if (!(box.w > 0 && box.h > 0)) continue;
     const density = box.lit / Math.max(1, (box.w * box.h) / 9);
     const score = box.lit * (0.5 + density);
     if (best && score <= best.score) continue;
-    const pad = 8;
+    const pad = 5;
     let w = box.w + pad * 2, h = box.h + pad * 2;
     if (w / h < RATIO) w = h * RATIO; else h = w / RATIO;
     const cx = box.x + box.w / 2, cy = box.y + box.h / 2;

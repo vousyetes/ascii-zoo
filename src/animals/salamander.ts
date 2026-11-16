@@ -11,10 +11,13 @@ import { SHARED_TUNING, type Animal, type Creature, type Flock } from "../flock"
 import type { Pen } from "../renderer";
 import { INK_DARK, INK_SCALE, ink } from "../ink";
 import { angleDiff, clamp, hash3, rand, smoothstep, TAU } from "../math";
-import { seg, toSegment } from "./shapes";
+import { seg, spotted, toSegment } from "./shapes";
 
 const N = 17;
-const RADII = [0.9, 1.05, 0.78, 1.1, 1.22, 1.25, 1.22, 1.12, 0.98, 0.82, 0.68, 0.56, 0.46, 0.37, 0.3, 0.24, 0.2];
+// Museau rond, tête large, cou étroit, tronc plus large, longue queue qui s'affine.
+const RADII = [0.85, 1.22, 0.8, 1.1, 1.26, 1.28, 1.22, 1.1, 0.95, 0.8, 0.64, 0.5, 0.4, 0.3, 0.22, 0.15, 0.1];
+/** Espacement entre points (en u) : plus long dans la queue. */
+const gap = (i: number) => (i >= 11 ? 1.2 : 0.95);
 type RGB = [number, number, number];
 
 const PATTERNS = ["axolotl", "feu", "gecko", "triton", "scinque", "emeraude"] as const;
@@ -27,6 +30,8 @@ interface Salamander extends Creature {
   /** Taille aléatoire 0.9 à 1.22. */
   size: number;
   gait: number;
+  /** Vitesse lissée (px/s) et son niveau 0..1. */
+  spd: number;
   /** "walk" | "pause" | "hunt", et temps restant. */
   mode: number;
   until: number;
@@ -94,6 +99,7 @@ const unitOf = (f: Salamander) => f.span * 0.055 * f.size;
 // Capsules du frame : ax, ay, bx, by, ra, rb, kind (0 corps, 1 patte, 2 branchie, 3 langue), idx, boîte x0 x1 y0 y1.
 const STRIDE = 12;
 const caps = new Float32Array(48 * STRIDE);
+const spine = new Float32Array(N * 2);
 
 export const salamander: Animal<Salamander> = {
   key: "salamander",
@@ -101,9 +107,9 @@ export const salamander: Animal<Salamander> = {
   swatch: [246, 198, 52],
   defaults: DEFAULTS,
   controls: [],
-  area: 100000,
-  max: 14,
-  scale: 1,
+  area: 125000,
+  max: 10,
+  scale: 1.3,
   speed: 50,
   trail: { light: [120, 110, 70], dark: [150, 140, 90] },
 
@@ -113,6 +119,7 @@ export const salamander: Animal<Salamander> = {
     pattern: Math.floor(hash3(c.id, 5, 9) * PATTERNS.length),
     size: rand(0.9, 1.22),
     gait: rand(0, TAU),
+    spd: 0,
     mode: 1,
     until: rand(0.2, 1),
     wander: 0,
@@ -133,10 +140,11 @@ export const salamander: Animal<Salamander> = {
     f.x = rand(40, flock.width - 40);
     f.y = rand(40, flock.height - 40);
     f.heading = rand(0, TAU);
-    const sp = 0.9 * unitOf(f);
+    let acc = 0;
     for (let k = 0; k < N; k++) {
-      f.nodes[k * 2] = f.x - Math.cos(f.heading) * sp * k;
-      f.nodes[k * 2 + 1] = f.y - Math.sin(f.heading) * sp * k;
+      f.nodes[k * 2] = f.x - Math.cos(f.heading) * acc;
+      f.nodes[k * 2 + 1] = f.y - Math.sin(f.heading) * acc;
+      acc += gap(k + 1) * unitOf(f);
     }
   },
 
@@ -233,13 +241,13 @@ export const salamander: Animal<Salamander> = {
         const aim = Math.atan2(best.y - f.y, best.x - f.x);
         const off = angleDiff(f.heading, aim);
         want = aim;
-        turnMax = 6;
+        turnMax = 3.5;
         f.sprintUntil -= dt;
         if (f.sprintUntil <= 0) {
           f.sprint = !f.sprint;
           f.sprintUntil = f.sprint ? rand(0.2, 0.45) : rand(0.1, 0.5);
         }
-        if (f.sprint) speed = 11 * u * smoothstep(0, 9 * u, bd) * 0.65 + 4 * u;
+        if (f.sprint) speed = (4 + 7 * smoothstep(2 * u, 12 * u, bd)) * u;
         if (bd < 4.6 * u && Math.abs(off) < 0.5) {
           f.tongue = 0;
           f.prey = best;
@@ -272,26 +280,26 @@ export const salamander: Animal<Salamander> = {
       const turn = turnMax * dt;
       f.heading += clamp(angleDiff(f.heading, want), -turn, turn);
     }
-    const dist = speed * dt;
+    // Vitesse lissée : monte et descend en douceur, jamais de saut.
+    f.spd += (speed - f.spd) * Math.min(1, dt * 5);
+    if (f.spd < 0.5) f.spd = 0;
+    const dist = f.spd * dt;
     // Ondulation latérale, liée à la distance parcourue.
     f.gait += (dist / u) * 0.5;
-    f.heading += Math.sin(f.gait) * 0.42 * (dist / u) * 0.35;
     f.x = clamp(f.x + Math.cos(f.heading) * dist, 4, W - 4);
     f.y = clamp(f.y + Math.sin(f.heading) * dist, 4, H - 4);
-    f.vx = Math.cos(f.heading) * speed;
-    f.vy = Math.sin(f.heading) * speed;
-    // Suivi du chef : chaque point reste à 0.9 u derrière le précédent.
+    f.vx = Math.cos(f.heading) * f.spd;
+    f.vy = Math.sin(f.heading) * f.spd;
+    // Suivi du chef avec limite de raideur : 22 degrés max entre deux segments.
     n[0] = f.x;
     n[1] = f.y;
-    const sp = 0.9 * u;
+    let prev = f.heading + Math.PI;
     for (let i = 1; i < N; i++) {
-      let dx = n[i * 2] - n[i * 2 - 2];
-      let dy = n[i * 2 + 1] - n[i * 2 - 1];
-      const l = Math.hypot(dx, dy) || 1;
-      dx /= l;
-      dy /= l;
-      n[i * 2] = n[i * 2 - 2] + dx * sp;
-      n[i * 2 + 1] = n[i * 2 - 1] + dy * sp;
+      let a = Math.atan2(n[i * 2 + 1] - n[i * 2 - 1], n[i * 2] - n[i * 2 - 2]);
+      a = prev + clamp(angleDiff(prev, a), -0.38, 0.38);
+      n[i * 2] = n[i * 2 - 2] + Math.cos(a) * gap(i) * u;
+      n[i * 2 + 1] = n[i * 2 - 1] + Math.sin(a) * gap(i) * u;
+      prev = a;
     }
   },
 
@@ -318,9 +326,24 @@ export const salamander: Animal<Salamander> = {
 };
 
 function drawSal(f: Salamander, pen: Pen, time: number) {
-  const n = f.nodes;
   const u = unitOf(f);
   const pat = f.pattern;
+  // Colonne rendue : la chaîne plus une ondulation en S qui voyage de la tête vers la queue.
+  const n = spine;
+  const mv = Math.min(1, f.spd / (6 * u));
+  const phase = f.gait * 2;
+  for (let i = 0; i < N; i++) {
+    const a = Math.max(0, i - 1);
+    const b = Math.min(N - 1, i + 1);
+    let tx = f.nodes[a * 2] - f.nodes[b * 2];
+    let ty = f.nodes[a * 2 + 1] - f.nodes[b * 2 + 1];
+    const l = Math.hypot(tx, ty) || 1;
+    tx /= l;
+    ty /= l;
+    const off = u * mv * (0.35 + 0.07 * i) * Math.sin(phase - i * 0.55);
+    n[i * 2] = f.nodes[i * 2] - ty * off;
+    n[i * 2 + 1] = f.nodes[i * 2 + 1] + tx * off;
+  }
   let nc = 0;
   const add = (ax: number, ay: number, bx: number, by: number, ra: number, rb: number, kind: number, idx: number) => {
     const o = nc * STRIDE;
@@ -339,50 +362,59 @@ function drawSal(f: Salamander, pen: Pen, time: number) {
     caps[o + 11] = Math.max(ay, by) + r;
     nc++;
   };
-  for (let i = 0; i < N - 1; i++) add(n[i * 2], n[i * 2 + 1], n[i * 2 + 2], n[i * 2 + 3], RADII[i] * u, RADII[i + 1] * u, 0, i);
+  let along = 0;
+  const pos0 = new Float32Array(N);
+  for (let i = 0; i < N - 1; i++) {
+    pos0[i] = along;
+    along += gap(i + 1);
+    add(n[i * 2], n[i * 2 + 1], n[i * 2 + 2], n[i * 2 + 3], RADII[i] * u, RADII[i + 1] * u, 0, i);
+  }
   const nBody = nc;
-
-  // Direction locale (vers la tête) et normale en un point de la chaîne.
   const frame = (i: number) => {
     const a = Math.max(0, i - 1);
     const b = Math.min(N - 1, i + 1);
     let tx = n[a * 2] - n[b * 2];
     let ty = n[a * 2 + 1] - n[b * 2 + 1];
     const l = Math.hypot(tx, ty) || 1;
-    tx /= l;
-    ty /= l;
-    return [tx, ty] as const;
+    return [tx / l, ty / l] as const;
   };
-  // Pattes aux points 3 et 8 : cuisse + jambe finissant par un pied plus large, allure en diagonale.
+  // Quatre pattes aux points 3 et 8, avec coude, en diagonale, en phase avec l'ondulation.
   for (const [pair, i] of [[0, 3], [1, 8]] as const) {
     const [tx, ty] = frame(i);
     for (const side of [-1, 1]) {
       const nx = -ty * side;
       const ny = tx * side;
-      const sw = Math.sin(f.gait * 2 + (side > 0 ? 0 : Math.PI) + pair * Math.PI);
-      const hx = n[i * 2] + nx * RADII[i] * u * 0.7;
-      const hy = n[i * 2 + 1] + ny * RADII[i] * u * 0.7;
-      const kx = hx + nx * 1.4 * u + tx * sw * 1.1 * u;
-      const ky = hy + ny * 1.4 * u + ty * sw * 1.1 * u;
-      const fx = kx + nx * 0.4 * u + tx * (sw * 0.9 + 0.5) * u;
-      const fy = ky + ny * 0.4 * u + ty * (sw * 0.9 + 0.5) * u;
-      add(hx, hy, kx, ky, 0.45 * u, 0.4 * u, 1, 0);
-      add(kx, ky, fx, fy, 0.38 * u, 0.55 * u, 1, 0);
+      const ph = phase + (side > 0 ? 0 : Math.PI) + pair * Math.PI;
+      const sw = Math.sin(ph) * mv;
+      const lift = Math.max(0, Math.cos(ph)) * mv;
+      const hx = n[i * 2] + nx * RADII[i] * u * 0.6;
+      const hy = n[i * 2 + 1] + ny * RADII[i] * u * 0.6;
+      // Coude vers l'extérieur et un peu vers l'arrière, pied vers l'avant ou posé.
+      const kx = hx + nx * 1.7 * u - tx * 0.3 * u + tx * sw * 0.6 * u;
+      const ky = hy + ny * 1.7 * u - ty * 0.3 * u + ty * sw * 0.6 * u;
+      const out = (1.3 - 0.5 * lift) * u;
+      const fx = kx + nx * out * 0.6 + tx * (sw * 1.5 + 0.9) * u;
+      const fy = ky + ny * out * 0.6 + ty * (sw * 1.5 + 0.9) * u;
+      add(hx, hy, kx, ky, 0.5 * u, 0.42 * u, 1, 0);
+      add(kx, ky, fx, fy, 0.4 * u, 0.62 * u, 1, 0);
     }
   }
-  // Axolotl : 3 branchies de chaque côté de la tête, qui ondulent.
+  // Axolotl : trois branchies plumeuses de chaque côté, longues, qui ondulent.
   if (pat === 0) {
     const [tx, ty] = frame(1);
     for (const side of [-1, 1]) {
       const nx = -ty * side;
       const ny = tx * side;
       for (let g = 0; g < 3; g++) {
-        const a = 0.5 + g * 0.55 + Math.sin(time * 4 + g * 1.3 + side) * 0.18;
-        const bx0 = n[2] + nx * 0.8 * u;
-        const by0 = n[3] + ny * 0.8 * u;
-        const dx = nx * Math.sin(a) - tx * Math.cos(a) * 0.6;
-        const dy = ny * Math.sin(a) - ty * Math.cos(a) * 0.6;
-        add(bx0, by0, bx0 + dx * 2.8 * u, by0 + dy * 2.8 * u, 0.35 * u, 0.2 * u, 2, 0);
+        const a = 0.35 + g * 0.5 + Math.sin(time * 4 + g * 1.3 + side) * 0.2;
+        const bx0 = n[2] + nx * 1.0 * u;
+        const by0 = n[3] + ny * 1.0 * u;
+        const dx = nx * Math.cos(a) * 0.9 - tx * Math.sin(a);
+        const dy = ny * Math.cos(a) * 0.9 - ty * Math.sin(a);
+        const mx = bx0 + dx * 1.8 * u;
+        const my = by0 + dy * 1.8 * u;
+        add(bx0, by0, mx, my, 0.4 * u, 0.3 * u, 2, 0);
+        add(mx, my, mx + dx * 2 * u + nx * 0.4 * u * Math.sin(time * 5 + g), my + dy * 2 * u, 0.3 * u, 0.12 * u, 2, 0);
       }
     }
   }
@@ -393,7 +425,7 @@ function drawSal(f: Salamander, pen: Pen, time: number) {
   }
 
   const mid = 8;
-  const R = 14 * u;
+  const R = 15 * u;
   const pose = { x: n[mid * 2], y: n[mid * 2 + 1], heading: f.heading, span: f.span, depth: f.depth, id: f.id };
   const base = BASE[pat];
   const o = pen.ink;
@@ -412,7 +444,8 @@ function drawSal(f: Salamander, pen: Pen, time: number) {
       const r = caps[b + 4] + (caps[b + 5] - caps[b + 4]) * seg.t;
       if (d / r < best) {
         best = d / r;
-        pos = (caps[b + 7] + seg.t) * 0.9;
+        const i = caps[b + 7];
+        pos = pos0[i] + seg.t * gap(i + 1);
         const cr = (caps[b + 2] - ax) * (py - ay) - (caps[b + 3] - ay) * (px - ax);
         lat = (cr >= 0 ? d : -d) / u;
       }
@@ -420,41 +453,40 @@ function drawSal(f: Salamander, pen: Pen, time: number) {
     if (best < 1) {
       o.au = pos / 15;
       o.av = lat / 2;
-      const flank = 1 - 0.3 * Math.min(1, Math.abs(best));
-      const h = hash3(Math.floor(pos * 1.15 + f.seed), Math.round(lat * 1.6), f.seed);
+      // Dos plus clair, flancs plus sombres.
+      const k = 1.12 - 0.42 * best;
       let col = base;
       let dark = false;
       const s = pos / 14.4;
       switch (pat) {
         case 0:
-          if (h > 0.86) col = [255, 226, 232];
+          if (spotted(pos, lat, 2.2, 0.45, f.seed)) col = [255, 228, 234];
           break;
         case 1:
-          if (hash3(Math.floor(pos * 0.7 + f.seed), Math.round(lat * 0.9), f.seed) > 0.68) col = [246, 198, 52];
+          if (spotted(pos, lat, 3.4, 1.0, f.seed)) col = [246, 198, 52];
           break;
         case 2:
-          if (h > 0.78) {
-            col = [96, 58, 30];
+          if (spotted(pos, lat, 2.6, 0.62, f.seed)) {
+            col = [92, 54, 28];
             dark = true;
           }
           break;
         case 3:
-          if (Math.abs(lat) < 0.55) col = [255, 200, 90];
-          else if (h > 0.8) col = [222, 60, 40];
+          if (best < 0.22) col = [255, 206, 100];
+          else if (spotted(pos, lat, 2.6, 0.55, f.seed)) col = [214, 52, 36];
           break;
         case 4: {
-          const al = Math.abs(lat);
-          if (al > 0.55 && al < 1.05) col = [240, 226, 190];
-          if (s > 0.55) {
-            const k = smoothstep(0.55, 0.95, s);
-            col = [col[0] + (76 - col[0]) * k, col[1] + (162 - col[1]) * k, col[2] + (255 - col[2]) * k];
+          if (best > 0.42 && best < 0.72) col = [244, 230, 190];
+          if (s > 0.5) {
+            const q = smoothstep(0.5, 0.9, s);
+            col = [col[0] + (76 - col[0]) * q, col[1] + (162 - col[1]) * q, col[2] + (255 - col[2]) * q];
           }
           break;
         }
         default:
-          if (h > 0.86) col = [205, 242, 205];
+          if (spotted(pos, lat, 2.4, 0.4, f.seed)) col = [210, 244, 210];
       }
-      return ink(o, col[0] * flank, col[1] * flank, col[2] * flank, dark ? INK_DARK : INK_SCALE);
+      return ink(o, col[0] * k, col[1] * k, col[2] * k, dark ? INK_DARK : INK_SCALE);
     }
     for (let c = nBody; c < nc; c++) {
       const b = c * STRIDE;
@@ -466,16 +498,16 @@ function drawSal(f: Salamander, pen: Pen, time: number) {
       const kind = caps[b + 6];
       if (kind === 3) return ink(o, ...TONGUE);
       if (kind === 2) return ink(o, ...GILL);
-      return ink(o, base[0] * 0.8, base[1] * 0.8, base[2] * 0.8);
+      return ink(o, base[0] * 0.85, base[1] * 0.85, base[2] * 0.85);
     }
     return false;
   });
 
-  // Yeux : deux cases d'accent sur les côtés de la tête.
-  const [tx, ty] = frame(0);
-  const eye: RGB = pat === 1 ? [246, 198, 52] : [250, 246, 230];
+  // Yeux nets : cellule claire avec un point sombre, de chaque côté de la tête.
+  const [tx, ty] = frame(1);
+  const white: RGB = pat === 1 ? [250, 214, 90] : [246, 244, 232];
   for (const side of [-1, 1]) {
-    pen.spot(n[0] + tx * 0.1 * u - ty * side * 0.65 * u, n[1] + ty * 0.1 * u + tx * side * 0.65 * u, "o", eye, [14, 12, 16], f.depth);
+    pen.spot(n[2] + tx * 0.25 * u - ty * side * 0.85 * u, n[3] + ty * 0.25 * u + tx * side * 0.85 * u, "\u25cf", [10, 8, 12], white, f.depth);
   }
   pen.shed(n[(N - 1) * 2], n[(N - 1) * 2 + 1], 0.01 * f.depth);
 }
