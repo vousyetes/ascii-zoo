@@ -47,42 +47,60 @@ body::before {
 .tweaks-open { bottom: auto; top: 18px; }
 @media (max-width: 700px) { .tweaks-open { display: none; } }
 
-/* Dock minimaliste : une colonne d'icones sans cadre. Loupe au survol (--k de 0 a 1, pilote par sidebar.ts). */
+/* Dock replie : un bouton « animaux » dans l'en-tete, comme « tweaks ». Il s'ouvre vers la droite en une rangee d'icones
+   sans cadre, avec une loupe (--k de 0 a 1, pilote par sidebar.ts). Sur mobile : une colonne sous le bouton. */
 .side {
-  position: fixed; z-index: 30; left: 6px; top: 50%; translate: 0 -50%;
-  --pitch: 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-  padding: 0; background: none; border: 0; box-shadow: none;
+  position: fixed; z-index: 30; left: 16px; top: 18px; --pitch: 30px;
+  display: flex; flex-direction: row; align-items: flex-start; gap: 10px;
+  padding: 0; background: none; border: 0; box-shadow: none; translate: none;
 }
-.side::before { /* un filet fin, comme un rail : se fond en haut et en bas */
-  content: ""; position: absolute; left: -6px; top: -10px; bottom: -10px; width: 1px;
-  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.16) 12%, rgba(255, 255, 255, 0.16) 88%, transparent);
+.side::before, .side::after { display: none; }
+.side-open {
+  flex: none; height: 32px; padding: 0 12px; cursor: pointer; border-radius: 4px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)), rgba(4, 5, 10, 0.66);
+  border: 1px solid var(--glass-edge); font: 700 11px "JetBrains Mono", monospace; letter-spacing: 0.1em; text-transform: lowercase; color: var(--text);
+  transition: border-color 0.2s, color 0.2s;
 }
-.side::after { display: none; }
-.side-list { display: flex; flex-direction: column; gap: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+.side-open:hover, .side.open .side-open { border-color: var(--cyan); }
+.side-open::after { content: "\00a0\203a"; display: inline-block; color: var(--cyan); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.side.open .side-open::after { transform: rotate(90deg); }
+.side-open:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* La rangee : fermee elle ne prend aucune place ; ouverte elle se deploie vers la droite, icone par icone. */
+.side-list {
+  display: flex; flex-direction: row; align-items: flex-start; gap: 0; touch-action: none; user-select: none; -webkit-user-select: none;
+  max-width: 0; overflow: visible; opacity: 0; pointer-events: none; margin-top: 1px;
+  transition: max-width 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s;
+}
+.side.open .side-list { max-width: 1200px; opacity: 1; pointer-events: auto; }
 .side-list button {
-  --k: 0; position: relative; display: block; width: calc(var(--pitch) * 1.5); height: var(--pitch); padding: 0; border: 0; background: none; cursor: pointer;
-  transform-origin: 0% 50%; transform: translateX(calc(var(--k) * 12px)) scale(calc(1 + var(--k) * 0.8));
-  z-index: calc(1 + var(--k) * 10); -webkit-tap-highlight-color: transparent;
+  --k: 0; --d: 0ms; position: relative; display: block; flex: none; width: calc(var(--pitch) * 1.5); height: var(--pitch); padding: 0; border: 0; background: none; cursor: pointer;
+  transform-origin: 50% 0%; -webkit-tap-highlight-color: transparent;
+  transform: translate(calc((1 - var(--o, 0)) * -14px), calc(var(--k) * 10px)) scale(calc(1 + var(--k) * 0.85));
+  opacity: var(--o, 0); z-index: calc(1 + var(--k) * 10);
+  transition: opacity 0.3s var(--d), translate 0.3s var(--d);
 }
+.side.open .side-list button { --o: 1; }
 .side-list img.ico {
-  display: block; width: 100%; height: 100%; object-fit: contain; object-position: left center; pointer-events: none;
-  opacity: calc(0.42 + var(--k) * 0.58); filter: saturate(calc(0.7 + var(--k) * 0.5)) drop-shadow(0 0 calc(var(--k) * 7px) var(--swatch));
+  display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; pointer-events: none;
+  opacity: calc(0.45 + var(--k) * 0.55); filter: saturate(calc(0.7 + var(--k) * 0.5)) drop-shadow(0 0 calc(var(--k) * 7px) var(--swatch));
 }
-/* L'animal actif : un petit point de sa couleur sur le rail. */
+/* L'animal actif : un petit point de sa couleur sous l'icone. */
 .side-list button::before {
-  content: ""; position: absolute; left: -6px; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2px; border-radius: 50%;
+  content: ""; position: absolute; left: 50%; bottom: -7px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
   background: var(--swatch); box-shadow: 0 0 8px var(--swatch); transform: scale(0); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .side-list button[aria-checked="true"]::before { transform: scale(1); }
-.side-list button[aria-checked="true"] img.ico { opacity: max(0.95, calc(0.42 + var(--k) * 0.58)); }
+.side-list button[aria-checked="true"] img.ico { opacity: max(0.95, calc(0.45 + var(--k) * 0.55)); }
 .side-list button:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
 
 .side-calm {
-  width: calc(var(--pitch) * 1.5); padding: 4px 0; cursor: pointer; border: 0; background: none; text-align: left;
-  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.04em; color: var(--muted); opacity: 0.6; transition: opacity 0.2s, color 0.2s;
+  flex: none; margin-left: 4px; padding: 4px 6px; cursor: pointer; border: 0; background: none; align-self: flex-start; margin-top: 4px;
+  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.04em; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity 0.3s 0.25s, color 0.2s;
 }
-.side-calm:hover { opacity: 1; color: var(--cyan); }
-.side-calm[aria-pressed="true"] { color: var(--soleil); opacity: 1; }
+.side.open .side-calm { opacity: 0.6; pointer-events: auto; }
+.side.open .side-calm:hover { opacity: 1; color: var(--cyan); }
+.side-calm[aria-pressed="true"] { color: var(--soleil); }
 
 /* Etiquette : numero, nom, facon de se deplacer. Une ligne, sans cadre lourd. */
 .side-tip {
@@ -91,17 +109,31 @@ body::before {
   background: rgba(6, 8, 16, 0.78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   border-left: 1px solid var(--swatch); white-space: nowrap;
 }
+.side-tip.below { translate: -50% -4px; border-left: 0; border-top: 1px solid var(--swatch); }
 .side-tip.on { opacity: 1; translate: 0 -50%; }
+.side-tip.below.on { translate: -50% 0; }
 .side-tip .n { font: 700 10px "JetBrains Mono", monospace; color: var(--swatch); }
 .side-tip .t { font: 700 13px "JetBrains Mono", monospace; color: var(--text); text-transform: lowercase; }
 .side-tip .s { font: 500 11px "JetBrains Mono", monospace; color: var(--muted); }
 
 .vye-title { padding-left: 0; }
 .vye-tag { left: 0; }
-@media (prefers-reduced-motion: reduce) { .side-tip, .side-list button::before { transition: none; } }
+
+/* Mobile : la rangee s'ouvre en colonne sous le bouton. */
+@media (max-width: 700px) {
+  .side { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .side-list { flex-direction: column; max-width: none; max-height: 0; padding: 0; overflow: visible; transition: max-height 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s; }
+  .side.open .side-list { max-height: 1000px; }
+  .side-list button { transform-origin: 0% 50%; transform: translate(calc((1 - var(--o, 0)) * -14px), 0) translateX(calc(var(--k) * 12px)) scale(calc(1 + var(--k) * 0.85)); }
+  .side-list button::before { left: -8px; bottom: auto; top: 50%; margin: -2px 0 0 0; }
+  .side-tip.below { translate: -4px -50%; border-top: 0; border-left: 1px solid var(--swatch); }
+  .side-tip.below.on { translate: 0 -50%; }
+  .side-calm { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .side-list, .side-list button, .side-tip, .side-open::after, .side-list button::before { transition: none; } }
 
 /* Mode icone : seule la scene reste, sans interface. */
-.icon-mode .side, .icon-mode .side-tip, .icon-mode .vye-title, .icon-mode .aurora, .icon-mode .side-toggle, .icon-mode .tweaks, .icon-mode .tweaks-open { display: none !important; }
+.icon-mode .side, .icon-mode .side-tip, .icon-mode .vye-title, .icon-mode .aurora, .icon-mode .side-open, .icon-mode .tweaks, .icon-mode .tweaks-open { display: none !important; }
 .icon-mode::before { display: none; }
 @media (max-width: 700px) { .side-list button { text-align: left; } .side-list .name, .side-list .sub { justify-self: start; } }
 

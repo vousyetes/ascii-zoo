@@ -1,9 +1,9 @@
 /**
- * Dock des animaux, minimaliste : une colonne d'icônes sans cadre, à gauche. Les icônes sont discrètes ;
- * la souris ou le doigt les grossit en loupe (la plus proche grossit le plus, ses voisines un peu), avec
- * un léger ressort. Le nom de l'animal sort à côté de l'icône visée. Sur écran tactile, on glisse le doigt
- * le long du dock : un tic haptique à chaque icône traversée, et on lâche sur l'animal voulu (le tic
- * haptique passe par navigator.vibrate : Android seulement, iOS ne le permet pas).
+ * Dock des animaux, minimaliste et replié : un bouton « animaux » dans l'en-tête (comme « tweaks »). Il s'ouvre
+ * vers la droite en une rangée d'icônes sans cadre. Souris ou doigt grossissent les icônes en loupe, avec un
+ * léger ressort, et le nom de l'animal visé s'affiche. Au doigt, on glisse le long de la rangée : un tic
+ * haptique à chaque icône traversée, et on lâche sur l'animal voulu (navigator.vibrate : Android seulement).
+ * Sur mobile la rangée s'ouvre en colonne sous le bouton.
  */
 
 export interface SideItem {
@@ -50,6 +50,8 @@ export function mountSidebar(
   onCalm?: (calm: boolean) => void,
 ) {
   const list = host.querySelector<HTMLElement>(".side-list")!;
+  const opener = host.querySelector<HTMLButtonElement>(".side-open")!;
+  const vertical = () => matchMedia("(max-width: 700px)").matches;
   const tip = document.querySelector<HTMLElement>(".side-tip");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -60,20 +62,45 @@ export function mountSidebar(
     b.setAttribute("aria-label", it.label);
     b.dataset.value = it.value;
     b.dataset.i = String(i);
+    b.style.setProperty("--d", `${i * 16}ms`);
     b.style.setProperty("--swatch", it.swatch);
     b.innerHTML = `<img class="ico" src="${it.icon}" alt="" draggable="false" decoding="async">`;
     list.append(b);
     return b;
   });
 
-  // Pas vertical adapté à la hauteur de l'écran : tout tient, sans défiler.
+  // Taille adaptée à l'écran : tout tient sans défiler (rangée en haut, colonne sur mobile).
   const fit = () => {
-    const room = window.innerHeight - 96;
-    const pitch = Math.max(20, Math.min(34, room / items.length));
+    const pitch = vertical()
+      ? Math.max(20, Math.min(34, (window.innerHeight - 150) / items.length))
+      : Math.max(22, Math.min(34, (window.innerWidth - 300) / (items.length * 1.5)));
     host.style.setProperty("--pitch", `${pitch}px`);
   };
   fit();
   window.addEventListener("resize", fit);
+
+  // Ouvrir / fermer : le bouton, Échap, un clic ailleurs, ou le choix d'un animal.
+  const setOpen = (open: boolean) => {
+    host.classList.toggle("open", open);
+    opener.setAttribute("aria-expanded", String(open));
+    if (!open) {
+      near = -1;
+      state.forEach((st) => (st.target = 0));
+      if (!raf) raf = requestAnimationFrame(tick);
+      showTip();
+    }
+  };
+  opener.addEventListener("click", () => {
+    const open = !host.classList.contains("open");
+    setOpen(open);
+    haptic(8);
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setOpen(false);
+  });
+  window.addEventListener("pointerdown", (e) => {
+    if (host.classList.contains("open") && !host.contains(e.target as Node)) setOpen(false);
+  });
 
   // ── loupe : chaque icône vise une échelle (selon sa distance au pointeur), un ressort la suit ──
   const state = buttons.map(() => ({ k: 0, v: 0, target: 0 }));
@@ -101,8 +128,10 @@ export function mountSidebar(
         return;
       }
       const r = b.getBoundingClientRect();
-      const d = Math.abs(y - (r.top + r.height / 2));
-      state[i].target = reduce ? (d < r.height / 2 ? 1 : 0) : Math.exp(-((d / spread) ** 2));
+      const c = vertical() ? r.top + r.height / 2 : r.left + r.width / 2;
+      const d = Math.abs(y - c);
+      const half = vertical() ? r.height / 2 : r.width / 2;
+      state[i].target = reduce ? (d < half ? 1 : 0) : Math.exp(-((d / spread) ** 2));
       if (d < bestD) {
         bestD = d;
         best = i;
@@ -143,12 +172,19 @@ export function mountSidebar(
     const r = buttons[near].getBoundingClientRect();
     tip.innerHTML = `<span class="n">${String(near + 1).padStart(2, "0")}</span><span class="t">${it.label}</span><span class="s">${it.sub}</span>`;
     tip.style.setProperty("--swatch", it.swatch);
-    tip.style.top = `${r.top + r.height / 2}px`;
-    tip.style.left = `${host.getBoundingClientRect().right + 10}px`;
+    tip.classList.toggle("below", !vertical());
+    if (vertical()) {
+      tip.style.top = `${r.top + r.height / 2}px`;
+      tip.style.left = `${host.getBoundingClientRect().right + 10}px`;
+    } else {
+      tip.style.top = `${r.bottom + 14}px`;
+      tip.style.left = `${r.left + r.width / 2}px`;
+    }
     tip.classList.add("on");
   }
 
-  list.addEventListener("pointermove", (e) => aim(e.clientY));
+  const along = (e: PointerEvent) => (vertical() ? e.clientY : e.clientX);
+  list.addEventListener("pointermove", (e) => aim(along(e)));
   list.addEventListener("pointerleave", () => {
     if (!touching) aim(null);
   });
@@ -157,7 +193,7 @@ export function mountSidebar(
       touching = true;
       list.setPointerCapture(e.pointerId);
       haptic(8);
-      aim(e.clientY);
+      aim(along(e));
     }
   });
   const release = (e: PointerEvent) => {
@@ -167,6 +203,7 @@ export function mountSidebar(
     if (near >= 0) {
       select(items[near].value, true);
       haptic(14);
+      setTimeout(() => setOpen(false), 180);
     }
     aim(null);
     e.preventDefault();
@@ -181,6 +218,7 @@ export function mountSidebar(
     const b = (e.target as HTMLElement).closest("button");
     if (!b || touching) return;
     select(b.dataset.value!, true);
+    setTimeout(() => setOpen(false), 180);
   });
 
   function select(value: string, pick: boolean) {
