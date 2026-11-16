@@ -59,13 +59,13 @@ const DEFAULTS = {
 };
 
 // Palette sombre : gris-bleu, avec reflets violet et cyan faibles.
-const BODY: RGB = [90, 98, 126];
-const LIMB: RGB = [122, 130, 164];
-const FAR: RGB = [46, 52, 78];
-const SILVER: RGB = [190, 196, 214];
-const SILVER_LOW: RGB = [160, 168, 190];
-const FACE: RGB = [30, 32, 46];
-const MUZZLE: RGB = [62, 68, 92];
+const BODY: RGB = [40, 44, 62];
+const LIMB: RGB = [58, 63, 88];
+const FAR: RGB = [24, 27, 42];
+const SILVER: RGB = [128, 134, 158];
+const SILVER_LOW: RGB = [96, 102, 126];
+const FACE: RGB = [12, 13, 22];
+const MUZZLE: RGB = [34, 38, 56];
 const VIOLET: RGB = [138, 116, 255];
 const CYAN: RGB = [92, 200, 255];
 const EYE_COLOR: RGB = [220, 240, 255];

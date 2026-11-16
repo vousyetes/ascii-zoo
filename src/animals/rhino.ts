@@ -30,8 +30,8 @@ interface Rhino extends Creature {
 
 const DEFAULTS = {
   ...SHARED_TUNING,
-  detail: 2.2,
-  density: 1.2,
+  detail: 2.6,
+  density: 1.0,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.35,
@@ -80,8 +80,8 @@ export const rhino: Animal<Rhino> = {
       { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
     ]],
   ],
-  area: 45000,
-  scale: 0.95,
+  area: 100000,
+  scale: 1.8,
   speed: 40,
   trail: { light: [150, 130, 190], dark: [168, 148, 214] },
 
@@ -153,57 +153,95 @@ export const rhino: Animal<Rhino> = {
       return { fu: l.hu + 0.06 * Math.sin(l.ph + c.gait), v: 0.27 - 0.04 * lift, lift };
     });
 
-    pen.shape(pose, 0.65, (u, v) => {
+    pen.shape(pose, 0.7, (u, v) => {
       const fu = u * d;
-      // Pattes d'abord : segments épais, plus sombres pour la paire éloignée.
+      // Pattes d'abord : gravure d'ecailles, sabots a trois orteils, plus sombres pour la paire eloignee.
       for (let i = 0; i < 4; i++) {
         const l = LEGS[i];
         const f = foot[i];
         const dist = toSegment(fu, v, l.hu + sway * 0.3, 0.05, f.fu, f.v);
         const w = 0.05 - 0.01 * seg.t;
         if (dist < w) {
-          if (v > f.v - 0.025) return ink(out, ...LEG_FAR, INK_DARK, "#"); // sabot
-          return ink(out, ...(l.far ? LEG_FAR : LEG_NEAR), INK_SCALE);
+          if (v > f.v - 0.03) {
+            const toe = Math.floor((fu - f.fu + 0.05) / 0.017) % 2 === 0;
+            return toe ? ink(out, ...LEG_FAR, INK_DARK, "#") : ink(out, ...HORN, INK_SPOT);
+          }
+          // Bague plissee au genou, puis ecailles en quinconce.
+          if (Math.abs(v - 0.16) < 0.006) return ink(out, ...PLATE_B, INK_DARK);
+          const stud = (Math.floor(fu / 0.016) + Math.floor(v / 0.016)) % 2 === 0;
+          return ink(out, ...(l.far ? LEG_FAR : stud ? LEG_NEAR : PLATE_B), stud ? INK_SCALE : INK_DARK);
         }
       }
-      // Queue fine à l'arrière.
-      if (toSegment(fu, v, -0.27, -0.06 + bob, -0.31, 0.04) < 0.008) return ink(out, ...LEG_FAR, INK_DARK);
+      // Queue fine a l'arriere, avec un petit pinceau.
+      if (toSegment(fu, v, -0.27, -0.06 + bob, -0.31, 0.06) < 0.008) return ink(out, ...LEG_FAR, INK_DARK);
+      if (inEllipse(fu, v, -0.312, 0.075, 0.012, 0.025)) return ink(out, ...PLATE_B, INK_DARK);
 
-      // Grande corne sur le nez, rabaissée en charge.
-      if (toSegment(fu, v, 0.43, -0.02 + headDown, 0.53 + 0.04 * ch, -0.17 + headDown * 1.7) < 0.035 * (1 - seg.t * 0.9) + 0.004) {
-        return ink(out, ...HORN, INK_SCALE);
+      // Grande corne : courbee vers l'arriere, baguee comme une corne vraie.
+      const hornTipX = 0.51 + 0.03 * ch;
+      if (toSegment(fu, v, 0.42, 0.0 + headDown, 0.5, -0.09 + headDown * 1.4) < 0.032 * (1 - seg.t * 0.4)) {
+        return Math.floor(seg.t * 4) % 2 ? ink(out, ...HORN, INK_SCALE) : ink(out, ...RIVET, INK_SCALE);
       }
-      // Petite corne sur le garrot.
-      if (toSegment(fu, v, 0.14, -0.12 + bob, 0.17, -0.2 + bob) < 0.02 * (1 - seg.t * 0.85) + 0.003) return ink(out, ...HORN, INK_SCALE);
-      // Oreille pointue.
-      if (toSegment(fu, v, 0.27, -0.06 + headDown, 0.255, -0.15 + headDown) < 0.02 * (1 - seg.t * 0.9) + 0.002) return ink(out, ...PLATE_B, INK_DARK);
+      if (toSegment(fu, v, 0.5, -0.09 + headDown * 1.4, hornTipX, -0.19 + headDown * 1.8) < 0.02 * (1 - seg.t * 0.9) + 0.003) {
+        return ink(out, ...RIVET, INK_SCALE);
+      }
+      // Petite corne sur le garrot, en bague elle aussi.
+      if (toSegment(fu, v, 0.12, -0.15 + bob, 0.15, -0.23 + bob) < 0.018 * (1 - seg.t * 0.85) + 0.003) return ink(out, ...HORN, INK_SCALE);
+      // Oreille pointue, avec son creux.
+      if (toSegment(fu, v, 0.27, -0.06 + headDown, 0.255, -0.16 + headDown) < 0.02 * (1 - seg.t * 0.9) + 0.003) {
+        return seg.t < 0.5 ? ink(out, ...PLATE_A, INK_SCALE) : ink(out, ...PLATE_B, INK_DARK);
+      }
 
-      // Tête : ellipse allongée, qui plonge en charge.
-      if (inEllipse(fu, v, 0.36, 0.01 + headDown, 0.12, 0.075)) {
-        // Joint du cou et plaque de joue.
+      // Tete : crane, museau tombant, babine, arcade, narine.
+      const hv = v - headDown;
+      const skull = inEllipse(fu, hv, 0.33, 0.0, 0.1, 0.075);
+      const snout = inEllipse(fu, hv, 0.43, 0.03, 0.065, 0.05);
+      if (skull || snout) {
         if (Math.abs(fu - 0.26) < 0.007) return ink(out, ...PLATE_B, INK_DARK);
-        if (Math.abs(v - (0.03 + headDown)) < 0.006 && fu > 0.3) return ink(out, ...PLATE_B, INK_DARK);
-        return ink(out, ...PLATE_A, INK_SCALE);
+        // Bouche : trait sombre qui descend en babine.
+        if (fu > 0.34 && Math.abs(hv - (0.052 - 0.04 * Math.max(0, 0.46 - fu))) < 0.005) return ink(out, ...EYE_BG, INK_DARK);
+        // Arcade au-dessus de l'oeil, plis de la joue.
+        if (Math.abs(hv + 0.03) < 0.005 && fu > 0.31 && fu < 0.4) return ink(out, ...PLATE_B, INK_DARK);
+        if (Math.abs(fu - 0.33) < 0.005 && hv > 0.0) return ink(out, ...PLATE_B, INK_DARK);
+        if (Math.hypot(fu - 0.47, hv - 0.035) < 0.012) return ink(out, ...EYE_BG, INK_DARK);
+        return ink(out, ...(hv < -0.02 ? PLATE_A : PLATE_B), INK_SCALE);
       }
 
-      // Corps : superellipse massive et basse.
+      // Corps : superellipse massive et basse, dessinee comme une gravure.
       const bu = fu / 0.28;
       const bv = (v - bob + 0.02) / 0.14;
-      if (Math.pow(Math.abs(bu), 3) + Math.pow(Math.abs(bv), 2.4) <= 1) {
+      const q = Math.pow(Math.abs(bu), 3) + Math.pow(Math.abs(bv), 2.4);
+      // Plaque d'epaule bombee, qui depasse la ligne du dos.
+      const es = Math.hypot((fu - 0.1) / 0.075, (v - bob + 0.045) / 0.135);
+      // Plaque de cuisse arriere.
+      const et = Math.hypot((fu + 0.17) / 0.075, (v - bob - 0.0) / 0.105);
+      if (es <= 1 || et <= 1 || q <= 1) {
+        const plate = es <= 1 ? es : et <= 1 ? et : 9;
+        if (plate < 1) {
+          // Cadre sombre, rivets regulierement espaces, puis hachures de gravure.
+          if (plate > 0.82) {
+            const ang = Math.atan2(v - bob + (es <= 1 ? 0.045 : 0), fu - (es <= 1 ? 0.1 : -0.17));
+            return Math.floor((ang + Math.PI) / (TAU / 14)) % 2 ? ink(out, ...RIVET, INK_SPOT) : ink(out, ...PLATE_B, INK_DARK);
+          }
+          const hatch = Math.floor((v + fu * 0.4 + 0.5) / 0.014) % 2 === 0;
+          return ink(out, ...(es <= 1 ? SHOULDER : PLATE_A), hatch ? INK_SCALE : INK_DARK);
+        }
+        // Collier plisse entre la tete et l'epaule : cotes horizontales.
+        if (fu > 0.19 && fu < 0.27) {
+          return Math.floor((v + 0.4) / 0.018) % 2 === 0 ? ink(out, ...PLATE_B, INK_DARK) : ink(out, ...PLATE_A, INK_SCALE);
+        }
+        if (q > 0.84) return ink(out, ...PLATE_B, INK_DARK); // contour de gravure
         // Joints verticaux entre les plaques, avec leurs rivets.
         for (const j of JOINTS) {
-          if (Math.abs(fu - j) < 0.007) {
-            const rivet = Math.abs(((v + 0.3) % 0.06) - 0.03) < 0.012;
+          if (Math.abs(fu - j) < 0.006) {
+            const rivet = Math.abs(((v + 0.3) % 0.05) - 0.025) < 0.011;
             return rivet ? ink(out, ...RIVET, INK_SPOT) : ink(out, ...PLATE_B, INK_DARK);
           }
         }
-        // Joint horizontal sous la ligne du dos et ventre plus sombre.
-        if (Math.abs(v - (0.0 + bob)) < 0.006) return ink(out, ...PLATE_B, INK_DARK);
+        if (Math.abs(v - (0.0 + bob)) < 0.005) return ink(out, ...PLATE_B, INK_DARK);
         if (v > 0.07 + bob) return ink(out, ...BELLY, INK_DARK);
-        // Plaque d'épaule en cyan, les autres alternent violet clair et foncé.
-        if (fu > 0.04 && fu < 0.16) return ink(out, ...SHOULDER, INK_SCALE);
         const panel = Math.floor((fu + 0.3) / 0.12);
-        return ink(out, ...(panel % 2 ? PLATE_A : PLATE_B), INK_SCALE);
+        const tone = (Math.floor((v + 0.5) / 0.02) % 2 === 0) !== (panel % 2 === 1);
+        return ink(out, ...(tone ? PLATE_A : PLATE_B), INK_SCALE);
       }
       return false;
     });
