@@ -1,10 +1,10 @@
 # Vous y êtes : animaux ASCII
 
-Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version Vous y êtes : nuit tech (fond noir, grille, la couleur arrive en lumière), 15 animaux, panneau Tweaks.
+Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version Vous y êtes : nuit tech (fond noir, grille, la couleur arrive en lumière), 17 animaux, panneau Tweaks.
 
-**Les 12 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
+**Les 14 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant, hippopotame, hippocampe. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
 
-**État honnête :** éléphant, escargot, colibri, flamant, axolotl, poulpe, caméléon et paon se lisent bien. Le gorille ressemble encore à un bloc (silhouette à reprendre), la raie manta est très grande et souvent coupée par le bord, le rhino est petit. Les comportements au clic ont été vus pour la plupart, pas tous. `scripts/shot.mjs` capture un animal en 9:16 pour itérer.
+**État honnête :** éléphant, escargot, colibri, flamant, axolotl, poulpe, caméléon, paon, rhino (gris, deux cornes) et hippocampe (beaucoup de variantes) se lisent bien. Gorille et hippopotame sont corrects mais à affiner, la raie manta est parfois coupée par le bord. Les comportements au clic ont été vus pour la plupart, pas tous. `scripts/shot.mjs` capture un animal en 9:16 pour itérer.
 
 ```sh
 npm install && npm run dev

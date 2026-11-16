@@ -18,6 +18,8 @@ import { manta } from "./manta";
 import { hummingbird } from "./hummingbird";
 import { elephant } from "./elephant";
 import { flamingo } from "./flamingo";
+import { seahorse } from "./seahorse";
+import { hippo } from "./hippo";
 
 /** Every animal, in the order the choices show them. */
 export const ANIMALS = {
@@ -40,6 +42,8 @@ export const ANIMALS = {
   hummingbird,
   elephant,
   flamingo,
+  seahorse,
+  hippo,
 } satisfies Record<string, Animal<any>>;
 
 export type AnimalKey = keyof typeof ANIMALS;
