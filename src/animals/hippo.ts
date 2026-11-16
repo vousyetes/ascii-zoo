@@ -29,7 +29,7 @@ interface Hippo extends Creature {
 const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
-  density: 1.2,
+  density: 1.1,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.35,
@@ -43,10 +43,10 @@ const DEFAULTS = {
   rage: 1,
 };
 
-const BODY: RGB = [140, 146, 162];
+const BODY: RGB = [150, 152, 172];
 const FLANK: RGB = [88, 94, 110];
 const BELLY: RGB = [62, 66, 80];
-const PINK: RGB = [158, 120, 132];
+const PINK: RGB = [196, 170, 182];
 const IVORY: RGB = [240, 238, 228];
 const MOUTH: RGB = [34, 16, 22];
 const EYE: RGB = [236, 238, 247];
@@ -73,8 +73,8 @@ export const hippo: Animal<Hippo> = {
       { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
     ]],
   ],
-  area: 45000,
-  scale: 0.9,
+  area: 55000,
+  scale: 1.2,
   speed: 34,
   trail: { light: [130, 136, 152], dark: [140, 146, 162] },
 
@@ -141,69 +141,80 @@ export const hippo: Animal<Hippo> = {
 
     const foot = LEGS.map((l) => {
       const lift = Math.max(0, Math.cos(l.ph + c.gait));
-      return { fu: l.hu + 0.03 * Math.sin(l.ph + c.gait), v: 0.33 - 0.03 * lift, lift };
+      return { fu: l.hu + 0.03 * Math.sin(l.ph + c.gait), v: 0.34 - 0.03 * lift, lift };
     });
     const SCAR: RGB = [196, 202, 216];
-    const MV = 0.09; // ligne de la bouche
-    const jaw = MV + g * 0.1; // dessus de la mandibule (s'abaisse au bâillement)
+    const WET: RGB = [206, 208, 226];
+    const TONGUE: RGB = [120, 62, 82];
+    const MV = 0.085; // ligne de la bouche
+    const EU = 0.4; // position de l'oeil
+    const EV = -0.13;
 
     pen.shape(pose, 0.7, (u, v) => {
       const fu = u * d;
-      // Pattes courtes et épaisses, quatre doigts.
+      const dr = g * 0.17 * Math.min(1, Math.max(0, (fu - 0.24) / 0.42)); // abaissement de la mandibule
+      const jt = MV + dr; // dessus de la mandibule
+
+      // Pattes en piliers trapus, quatre doigts.
       for (let i = 0; i < 4; i++) {
         const l = LEGS[i];
         const f = foot[i];
-        if (toSegment(fu, v, l.hu + sway * 0.3, 0.16, f.fu, f.v) < 0.052 - 0.006 * seg.t) {
-          if (v > f.v - 0.035) return Math.floor((fu - f.fu + 0.05) / 0.025) % 2 === 0 ? ink(out, ...IVORY, INK_SPOT) : ink(out, ...BELLY, INK_DARK);
+        if (toSegment(fu, v, l.hu + sway * 0.3, 0.16, f.fu, f.v) < 0.062 - 0.006 * seg.t) {
+          if (v > f.v - 0.03) return Math.floor((fu - f.fu + 0.06) / 0.03) % 2 === 0 ? ink(out, ...IVORY, INK_SPOT) : ink(out, ...BELLY, INK_DARK);
           return ink(out, ...(l.far ? BELLY : FLANK), INK_SCALE);
         }
       }
       // Petite queue.
-      if (toSegment(fu, v, -0.4, -0.06 + bob, -0.46, 0.04) < 0.01) return ink(out, ...FLANK, INK_DARK);
+      if (toSegment(fu, v, -0.44, -0.08 + bob, -0.5, 0.0) < 0.012) return ink(out, ...FLANK, INK_DARK);
 
-      // Reliefs sur le dessus du crâne : oreille ronde, bosse de l'oeil, bosse des naseaux.
-      if (inEllipse(fu, v, 0.2, -0.085, 0.026, 0.03)) return Math.hypot(fu - 0.2, v + 0.08) < 0.012 ? ink(out, ...PINK, INK_SPOT) : ink(out, ...FLANK, INK_DARK);
-      if (inEllipse(fu, v, 0.37, -0.08, 0.03, 0.03)) return Math.hypot(fu - 0.37, v + 0.075) < 0.011 ? ink(out, ...EYE_BG, INK_DARK) : ink(out, ...BODY, INK_SCALE);
-      if (inEllipse(fu, v, 0.58, -0.05, 0.027, 0.026)) return inEllipse(fu, v, 0.58, -0.05, 0.011, 0.012) ? ink(out, ...EYE_BG, INK_DARK) : ink(out, ...FLANK, INK_DARK);
+      // Reliefs du crâne : petites oreilles rondes, bosses des yeux et des naseaux (dépassent du contour).
+      if (inEllipse(fu, v, 0.27, -0.135, 0.028, 0.032)) return inEllipse(fu, v, 0.27, -0.132, 0.012, 0.016) ? ink(out, ...PINK, INK_SPOT) : ink(out, ...FLANK, INK_DARK);
+      if (inEllipse(fu, v, EU, EV, 0.035, 0.034)) return Math.hypot(fu - EU, v - EV) < 0.012 ? ink(out, ...EYE_BG, INK_DARK) : ink(out, ...BODY, INK_SCALE);
+      if (inEllipse(fu, v, 0.68, -0.09, 0.034, 0.032)) return inEllipse(fu, v, 0.68, -0.088, 0.013, 0.013) ? ink(out, ...EYE_BG, INK_DARK) : ink(out, ...FLANK, INK_DARK);
 
-      // Tête massive : museau très large et plat, prolonge le corps vers l'avant.
-      const hu = (fu - 0.4) / 0.26;
-      if (v < MV && fu > 0.15 && Math.pow(Math.abs(hu), 3.5) + Math.pow(Math.abs((v - 0.03) / 0.085), 2.4) < 1) {
-        if (v > MV - 0.01 && fu > 0.3) return ink(out, ...MOUTH, INK_DARK); // ligne de gueule
-        if (inEllipse(fu, v, 0.3, 0.04, 0.05, 0.035)) return ink(out, ...PINK, INK_SCALE);
-        if (Math.abs(v + 0.03) < 0.004 && fu > 0.25 && fu < 0.5) return ink(out, ...FLANK, INK_DARK);
+      // Mâchoire inférieure : lèvre marquée, rose sous le menton.
+      const jq = Math.pow(Math.abs((fu - 0.47) / 0.27), 3) + Math.pow(Math.abs((v - jt - 0.04) / 0.06), 2.4);
+      if (fu > 0.24 && v >= jt && jq < 1) {
+        if (v < jt + 0.012) return ink(out, ...FLANK, INK_DARK); // lèvre
+        if (g > 0.3 && v < jt + 0.035 && fu > 0.56 && Math.floor((fu - 0.3) / 0.035) % 2 === 0) return ink(out, ...IVORY, INK_SPOT);
+        return ink(out, ...(v > jt + 0.05 ? PINK : BODY), INK_SCALE);
+      }
+      // Tête géante : crâne large, museau carré et plat.
+      const hq = Math.pow(Math.abs((fu - 0.46) / 0.28), 3.4) + Math.pow(Math.abs((v + 0.015) / 0.115), 2.6);
+      if (fu > 0.2 && v < MV + 0.004 && hq < 1) {
+        if (v > MV - 0.002 && fu > 0.28) return g > 0.05 ? false : ink(out, ...MOUTH, INK_DARK); // ligne de gueule
+        if (g > 0.3 && v > MV - 0.03 && fu > 0.56 && Math.floor((fu - 0.3) / 0.035) % 2 === 0) return ink(out, ...IVORY, INK_SPOT);
+        if (v > MV - 0.014 && fu > 0.3) return ink(out, ...FLANK, INK_DARK); // lèvre supérieure
+        if (inEllipse(fu, v, 0.33, 0.03, 0.06, 0.04)) return ink(out, ...PINK, INK_SCALE); // joue
+        if (Math.abs(v + 0.05) < 0.004 && fu > 0.3 && fu < 0.55) return ink(out, ...FLANK, INK_DARK); // pli
+        if (inEllipse(fu, v, 0.52, -0.09, 0.03, 0.008)) return ink(out, ...WET, INK_SPOT);
         return ink(out, ...(v < 0 ? BODY : FLANK), INK_SCALE);
       }
-      // Mandibule épaisse.
-      const ju = (fu - 0.38) / 0.24;
-      if (v >= MV && Math.pow(Math.abs(ju), 3) + Math.pow(Math.abs((v - jaw - 0.045) / 0.07), 2.4) < 1) {
-        if (v < jaw) return g > 0.05 && fu > 0.3 ? ink(out, ...MOUTH, INK_DARK) : ink(out, ...MOUTH, INK_DARK);
-        if (v < jaw + 0.02 && fu > 0.46 && g > 0.25 && Math.floor((fu - 0.3) / 0.03) % 2 === 0) return ink(out, ...IVORY, INK_SPOT);
-        if (v < jaw + 0.01) return ink(out, ...MOUTH, INK_DARK);
-        return ink(out, ...(v > jaw + 0.06 ? BELLY : FLANK), INK_SCALE);
+      // Gueule ouverte : fond sombre et langue entre les deux mâchoires.
+      if (g > 0.05 && fu > 0.28 && v >= MV && v < jt && hq < 1.9) {
+        if (v > jt - 0.03 && fu > 0.4) return ink(out, ...TONGUE, INK_SCALE);
+        return ink(out, ...MOUTH, INK_DARK);
       }
 
-      // Corps en tonneau très arrondi, dos bombé, ventre bas.
-      const bu = (fu + 0.08) / 0.34;
-      const bv = (v - bob - 0.065) / 0.225;
-      const q = Math.pow(Math.abs(bu), 2.2) + Math.pow(Math.abs(bv), 2.2);
+      // Corps en tonneau énorme : dos bombé, flancs ronds, ventre pendant.
+      const q = Math.pow(Math.abs((fu + 0.12) / 0.4), 2.3) + Math.pow(Math.abs((v - bob - 0.07) / 0.27), 2.3);
       if (q <= 1) {
         if (q > 0.9) return ink(out, ...FLANK, INK_DARK);
-        // Plis du cou fins, cicatrices claires, plis du flanc.
-        if (fu > 0.06 && fu < 0.2 && Math.abs(Math.sin((fu - 0.06) * 60 + v * 5)) < 0.1) return ink(out, ...FLANK, INK_DARK);
-        if (toSegment(fu, v, -0.2, -0.04, -0.12, -0.01) < 0.004 || toSegment(fu, v, -0.28, 0.08, -0.23, 0.14) < 0.004) return ink(out, ...SCAR, INK_SPOT);
-        const fold = ((((v + 0.5 + 0.01 * Math.sin(fu * 40)) % 0.06) + 0.06) % 0.06) - 0.03;
-        if (Math.abs(fold) < 0.0025 && v > -0.05) return ink(out, ...FLANK, INK_DARK);
-        if (v > 0.2 + bob) return ink(out, ...BELLY, INK_DARK);
-        if (inEllipse(fu, v, 0.1, 0.05, 0.04, 0.035)) return ink(out, ...PINK, INK_SCALE);
-        const sh = 1.15 - 0.9 * (v + 0.15);
+        const fold = ((((v + 0.5 + 0.01 * Math.sin(fu * 40)) % 0.07) + 0.07) % 0.07) - 0.035;
+        if (Math.abs(fold) < 0.0025 && v > 0.0) return ink(out, ...FLANK, INK_DARK);
+        if (fu > 0.04 && fu < 0.2 && Math.abs(Math.sin((fu - 0.04) * 60 + v * 5)) < 0.09) return ink(out, ...FLANK, INK_DARK); // plis du cou
+        if (toSegment(fu, v, -0.25, -0.05, -0.15, -0.02) < 0.004) return ink(out, ...SCAR, INK_SPOT);
+        // Luisant humide sur le dos.
+        if (v < -0.08 && (inEllipse(fu, v, -0.1, -0.15, 0.03, 0.012) || inEllipse(fu, v, -0.28, -0.1, 0.02, 0.01) || inEllipse(fu, v, 0.05, -0.16, 0.02, 0.01))) return ink(out, ...WET, INK_SPOT);
+        if (v > 0.22 + bob) return ink(out, ...PINK, INK_DARK); // ventre
+        const sh = 1.12 - 0.85 * (v + 0.15);
         return ink(out, BODY[0] * sh, BODY[1] * sh, BODY[2] * sh, INK_SCALE);
       }
       return false;
     });
 
-    // Petit oeil net sur le dessus de la tête.
-    pen.toWorld(pose, d * 0.37, -0.08, at);
+    // Petit oeil net sur la bosse du crâne.
+    pen.toWorld(pose, d * EU, EV, at);
     pen.spot(at.x, at.y, "o", EYE, EYE_BG, c.depth);
   },
 };

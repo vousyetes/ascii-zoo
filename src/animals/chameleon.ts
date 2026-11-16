@@ -73,7 +73,7 @@ function skin(c: Chameleon, time: number, k: typeof DEFAULTS, w: number): RGB {
   return col;
 }
 
-const TAIL_N = 16;
+const TAIL_N = 24;
 const tx = new Float32Array(TAIL_N + 1);
 const ty = new Float32Array(TAIL_N + 1);
 const DARK: RGB = [20, 14, 30];
@@ -92,8 +92,8 @@ export const chameleon: Animal<Chameleon> = {
       { key: "curl", label: "Spirale", min: 0, max: 2, step: 0.05, hint: "Amplitude avec laquelle la queue s'enroule et se déroule." },
     ]],
   ],
-  area: 45000,
-  scale: 0.9,
+  area: 70000,
+  scale: 1.3,
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
@@ -139,9 +139,9 @@ export const chameleon: Animal<Chameleon> = {
     const R = 0.15 * tight;
     for (let i = 0; i <= TAIL_N; i++) {
       const s = i / TAIL_N;
-      const a = s * TAU * 1.55;
-      const r = R * (1 - 0.82 * s);
-      tx[i] = -0.34 + r * Math.cos(a);
+      const a = s * TAU * 2;
+      const r = R * (1 - 0.8 * s);
+      tx[i] = -0.36 + r * Math.cos(a);
       ty[i] = 0.04 + r * Math.sin(a);
     }
 
@@ -174,41 +174,70 @@ export const chameleon: Animal<Chameleon> = {
       pen.lineBody(pose, footU, footY * f, footU - 0.06, (footY + 0.03) * f, lc, ">");
     }
 
-    pen.shape(pose, 0.7, (u, v) => {
+    // Éclaircit une couleur (même teinte, plus lumineuse) : m > 1 vers le blanc, m < 1 vers le sombre.
+    const tone = (r: number, g: number, b: number, m: number) =>
+      m <= 1 ? ink(out, r * m, g * m, b * m, INK_SHIMMER) : ink(out, r + (255 - r) * (m - 1), g + (255 - g) * (m - 1), b + (255 - b) * (m - 1), INK_SHIMMER);
+    // Pointes de la crête dorsale : base sur le dos, pointe vers le haut.
+    const SPINES = [-0.17, -0.12, -0.07, -0.02, 0.03, 0.08, 0.13];
+
+    pen.shape(pose, 0.75, (u, v) => {
       const y = v * f;
       const inBody =
-        inEllipse(u, y, 0, -0.01, 0.2, 0.13) ||
-        inEllipse(u, y, 0.02, 0.03, 0.16, 0.12) || // ventre rond
-        inEllipse(u, y, -0.04, -0.07, 0.13, 0.1) || // dos arqué
-        inEllipse(u, y, 0.25, -0.035, 0.095, 0.07) || // tête
-        inEllipse(u, y, 0.33, -0.02, 0.05, 0.035) || // museau
-        inEllipse(u, y, 0.2, -0.11, 0.07, 0.06) || // casque
-        inEllipse(u, y, 0.15, -0.16, 0.03, 0.04); // crête
-      if (inBody) {
-        // Orbite sombre autour de l'oeil conique.
-        if ((u - 0.27) ** 2 + (y + 0.055) ** 2 < 0.045 * 0.045) return ink(out, ...DARK, INK_DARK);
-        // Écailles sombres sur les joints : bandes régulières le long du corps.
-        const band = frac(u / 0.06);
-        if (u < 0.2 && (band < 0.05 || (y < -0.15 && band < 0.3))) return ink(out, ...DARK, INK_DARK);
-        const [r, g, b] = skin(c, time, k, -u);
-        const bright = y > 0.07 ? 0.8 : 1; // ventre un peu plus sombre
-        return ink(out, r * bright, g * bright, b * bright, INK_SHIMMER);
+        inEllipse(u, y, 0, 0.0, 0.2, 0.14) || // corps comprimé
+        inEllipse(u, y, 0.02, 0.04, 0.16, 0.12) || // ventre rond
+        inEllipse(u, y, -0.04, -0.07, 0.14, 0.1) || // dos arqué
+        inEllipse(u, y, 0.26, -0.03, 0.1, 0.075) || // tête
+        inEllipse(u, y, 0.35, -0.01, 0.05, 0.04) || // museau arrondi
+        toSegment(u, y, 0.3, -0.1, 0.12, -0.2) < 0.03 * (1 - seg.t * 0.9) || // casque pointu vers l'arrière
+        inEllipse(u, y, 0.27, -0.09, 0.05, 0.035); // arcade
+      let spine = false;
+      if (!inBody && y < -0.05 && y > -0.2 && u > -0.22 && u < 0.15) {
+        for (const su of SPINES) {
+          const by = -0.07 - 0.1 * Math.sqrt(Math.max(0, 1 - ((su + 0.04) / 0.14) ** 2)) + 0.01;
+          if (toSegment(u, y, su, by, su - 0.012, by - 0.045) < 0.013 * (1 - seg.t * 0.8)) spine = true;
+        }
       }
+      if (inBody || spine) {
+        // Bouche : fine ligne sombre du museau vers la joue.
+        if (toSegment(u, y, 0.395, 0.0, 0.24, 0.02) < 0.006) return ink(out, ...DARK, INK_DARK);
+        const [r, g, b] = skin(c, time, k, -u);
+        if (spine) return tone(r, g, b, 0.7);
+        const ex = u - 0.275;
+        const ey = y + 0.055;
+        const d2 = ex * ex + ey * ey;
+        if (d2 < 0.018 * 0.018) return ink(out, ...DARK, INK_DARK); // pupille
+        if (d2 < 0.034 * 0.034) return tone(r, g, b, 1.75); // anneau clair du cône
+        if (d2 < 0.048 * 0.048) return ink(out, ...DARK, INK_DARK); // orbite sombre
+        // Dégradé dorsal sombre vers ventre clair, même teinte.
+        let m = 0.8 + 0.5 * Math.min(1, Math.max(0, (y + 0.15) / 0.3));
+        if (u < 0.2) {
+          // Bande claire latérale.
+          if (Math.abs(y - 0.0) < 0.014) m = 1.55;
+          else {
+            // Losanges d'écailles plus sombres le long du flanc.
+            const du = Math.abs(frac(u / 0.07) - 0.5);
+            const dv = Math.abs(frac((y + 0.035 * Math.floor(u / 0.07)) / 0.08) - 0.5);
+            if (du + dv * 0.9 < 0.22 && y > -0.1 && y < 0.1) m *= 0.62;
+          }
+        }
+        return tone(r, g, b, m);
+      }
+      if (u > -0.17 || y < -0.14 || y > 0.2) return false; // hors de la boîte de la queue
       for (let i = 0; i < TAIL_N; i++) {
-        const th = 0.05 * (1 - 0.55 * (i / TAIL_N));
+        const th = 0.045 * (1 - 0.6 * (i / TAIL_N));
         if (toSegment(u, y, tx[i], ty[i], tx[i + 1], ty[i + 1]) < th) {
-          if (i % 5 === 0 && seg.t < 0.12) return ink(out, ...DARK, INK_DARK);
           const [r, g, b] = skin(c, time, k, 0.3 + (i / TAIL_N) * 0.3);
-          return ink(out, r, g, b, INK_SHIMMER);
+          if (i % 4 === 0 && seg.t < 0.2) return ink(out, ...DARK, INK_DARK);
+          return tone(r, g, b, 1.3 - 0.6 * (i / TAIL_N));
         }
       }
       return false;
     });
 
     // Oeil conique : un point lumineux qui balaie, indépendant du corps.
-    const ex = 0.27 + 0.022 * Math.sin(c.eye) + 0.008 * Math.sin(c.eye * 2.7);
-    const ey = -0.06 + 0.014 * Math.cos(c.eye * 0.8);
+    const ex = 0.275 + 0.012 * Math.sin(c.eye);
+    const ey = -0.062 + 0.008 * Math.cos(c.eye * 0.8);
     pen.toWorld(pose, ex, ey * f, at);
-    pen.spot(at.x, at.y, "●", GLINT, DARK, c.depth);
+    pen.spot(at.x, at.y, "·", GLINT, DARK, c.depth);
   },
 };

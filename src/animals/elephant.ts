@@ -30,6 +30,8 @@ interface Elephant extends Creature {
   roar: number;
   bellowUntil: number;
   hurryUntil: number;
+  /** Temps écoulé depuis le clic (jet d'eau), -1 hors jet. */
+  jet: number;
 }
 
 const DEFAULTS = {
@@ -61,6 +63,15 @@ const EYE: RGB = [10, 8, 18];
 const GLINT: RGB = [236, 238, 247];
 
 const GROUND = -0.42;
+
+// Jet d'eau : début, fin, nombre de gouttes et durée de vie d'une goutte (secondes).
+const JET_START = 0.35;
+const JET_END = 2.1;
+const DROPS = 34;
+const DROP_LIFE = 0.9;
+const WET: RGB = [14, 40, 64];
+const SUN: RGB = [255, 176, 103];
+const GLYPHS = ["●", "•", "o"];
 const NEAR_X = [0.2, -0.2];
 const FAR_X = [0.27, -0.13];
 
@@ -89,7 +100,7 @@ export const elephant: Animal<Elephant> = {
 
   create: (c) => ({
     ...c, right: true, gait: rand(0, TAU), earPh: rand(0, TAU), pausing: false, until: 0,
-    sniff: 0, roar: 0, bellowUntil: 0, hurryUntil: 0,
+    sniff: 0, roar: 0, bellowUntil: 0, hurryUntil: 0, jet: -1,
   }),
 
   enter(c, flock) {
@@ -104,6 +115,7 @@ export const elephant: Animal<Elephant> = {
       c.pausing = !c.pausing && k.rest > 0;
       c.until = t + (c.pausing ? rand(1.5, 3.5) * k.rest : rand(4, 9));
     }
+    if (c.jet >= 0) c.jet = c.jet > JET_END ? -1 : c.jet + dt;
     const bellowing = t < c.bellowUntil;
     const hurry = t < c.hurryUntil;
     const cruise = flock.cruise(c);
@@ -128,7 +140,8 @@ export const elephant: Animal<Elephant> = {
     const k = flock.tuning as typeof DEFAULTS;
     if (k.scare <= 0) return;
     const t = flock.time;
-    c.bellowUntil = t + (1.2 + 0.8 * strength) * Math.sqrt(k.scare);
+    c.bellowUntil = t + Math.max(JET_END, (1.2 + 0.8 * strength) * Math.sqrt(k.scare));
+    c.jet = 0;
     c.hurryUntil = c.bellowUntil + (1 + 2 * strength) * k.scare;
     c.pausing = false;
     c.until = c.hurryUntil + rand(1, 3);
@@ -242,6 +255,34 @@ export const elephant: Animal<Elephant> = {
       }
       return false;
     });
+
+    // Jet d'eau : balistique pure depuis le bout de la trompe, rien n'est stocké.
+    if (c.jet > JET_START) {
+      const dir = c.right ? 1 : -1;
+      pen.toWorld(pose, tf[N], sg * th[N], at);
+      const x0 = at.x, y0 = at.y;
+      const gy = c.y + 0.42 * S; // sol
+      const vx = dir * S * 1.15, vy = -S * 1.0, g = S * 2.4;
+      const dt = (JET_END - JET_START - DROP_LIFE) / DROPS;
+      const fog = c.depth;
+      for (let i = 0; i < DROPS; i++) {
+        const age = c.jet - JET_START - i * dt;
+        if (age < 0 || age > DROP_LIFE) continue;
+        const h = Math.sin(i * 12.9898) * 43758.5453, r = h - Math.floor(h) - 0.5;
+        const x = x0 + (vx * (1 + 0.12 * r)) * age + r * S * 0.05 * age;
+        const y = y0 + vy * (1 + 0.1 * r) * age + 0.5 * g * age * age;
+        const col = i % 7 === 3 ? SUN : i % 2 ? IVORY : CYAN;
+        if (y < gy) {
+          // Gouttes pleines (une cellule) plutôt que points légers : lisibles de loin.
+          if (i % 3 === 0) pen.line(x, y, x - vx * 0.05, y - (vy + g * age) * 0.05, col, fog);
+          pen.spot(x, y, GLYPHS[(i + (age > 0.5 ? 1 : 0)) % 3], col, WET, fog);
+        } else if (age < DROP_LIFE) {
+          // Gerbe à l'arrivée : éclaboussures qui s'écartent du point d'impact.
+          pen.dot(x + r * S * 0.1, gy - S * 0.02 * (1 + r), "·", col, fog);
+          if (i % 4 === 0) pen.shed(x, gy, 0.05 * c.depth);
+        }
+      }
+    }
 
     // Petit oeil doux, une cellule.
     pen.toWorld(pose, 0.4, sg * (0.1 + headUp), at);

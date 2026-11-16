@@ -55,7 +55,7 @@ export function mountSidebar(
     b.dataset.value = it.value;
     b.style.setProperty("--swatch", it.swatch);
     b.innerHTML =
-      `<span class="cell" aria-hidden="true"><img class="ico" src="${it.icon}" alt="" width="52" height="38" loading="lazy" decoding="async"></span>` +
+      `<span class="cell" aria-hidden="true"><img class="ico" src="${it.icon}" alt="" width="52" height="38" decoding="async"></span>` +
       `<span class="n">${String(i + 1).padStart(2, "0")}</span>` +
       `<span class="name">${it.label}</span>` +
       `<span class="sub">${it.sub}</span>`;
