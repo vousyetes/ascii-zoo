@@ -82,15 +82,15 @@ function tint(out: Ink, a: RGB, b: RGB, t: number, kind = INK_BODY) {
 
 export const elephant: Animal<Elephant> = {
   key: "elephant",
-  label: "éléphant",
+  label: "Elephant",
   swatch: [169, 174, 196],
   defaults: DEFAULTS,
   controls: [
-    ["Éléphant", [
-      { key: "rest", label: "Pauses", min: 0, max: 4, step: 0.05, hint: "Durée des pauses où la trompe se lève et sent. 0 : il ne s'arrête jamais." },
-      { key: "stride", label: "Pas", min: 0.3, max: 2.5, step: 0.05, hint: "Rythme du balancement des pattes." },
-      { key: "earSpeed", label: "Oreilles", min: 0, max: 3, step: 0.05, hint: "Vitesse du battement des oreilles." },
-      { key: "scare", label: "Barrissement", min: 0, max: 3, step: 0.05, hint: "Durée du barrissement et de la course qui suit un clic proche. 0 : il ignore le clic." },
+    ["Elephant", [
+      { key: "rest", label: "Rests", min: 0, max: 4, step: 0.05, hint: "How long the pauses last, with trunk raised to sniff. 0: it never stops." },
+      { key: "stride", label: "Stride", min: 0.3, max: 2.5, step: 0.05, hint: "Pace of the leg swing." },
+      { key: "earSpeed", label: "Ears", min: 0, max: 3, step: 0.05, hint: "How fast the ears flap." },
+      { key: "scare", label: "Trumpet", min: 0, max: 3, step: 0.05, hint: "How long the trumpeting and the run after a close click last. 0: it ignores the click." },
     ]],
   ],
   area: 55000,

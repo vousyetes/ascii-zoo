@@ -74,15 +74,15 @@ const mix = (a: RGB, b: RGB, t: number): RGB => [lerp(a[0], b[0], t), lerp(a[1],
 
 export const flamingo: Animal<Flamingo> = {
   key: "flamingo",
-  label: "flamant",
+  label: "Flamingo",
   swatch: [255, 111, 97],
   defaults: DEFAULTS,
   controls: [
-    ["Flamant", [
-      { key: "stride", label: "Enjambee", min: 0.3, max: 2.5, step: 0.05, hint: "Vitesse des grands pas dans l'eau." },
-      { key: "pause", label: "Pauses sur une patte", min: 0, max: 3, step: 0.05, hint: "Duree des arrets. 0 : il ne s'arrete jamais." },
-      { key: "flight", label: "Envols", min: 0, max: 3, step: 0.05, hint: "Frequence des envols spontanes." },
-      { key: "scare", label: "Peur du clic", min: 0, max: 3, step: 0.05, hint: "Duree de la fuite en vol quand on clique pres de lui." },
+    ["Flamingo", [
+      { key: "stride", label: "Stride", min: 0.3, max: 2.5, step: 0.05, hint: "How fast the long steps in the water are." },
+      { key: "pause", label: "One-leg pauses", min: 0, max: 3, step: 0.05, hint: "How long the stops last. 0: it never stops." },
+      { key: "flight", label: "Takeoffs", min: 0, max: 3, step: 0.05, hint: "How often it takes off on its own." },
+      { key: "scare", label: "Click fear", min: 0, max: 3, step: 0.05, hint: "How long it flees in flight when you click near it." },
     ]],
   ],
   area: 50000,

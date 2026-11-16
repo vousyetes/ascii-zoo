@@ -81,17 +81,17 @@ const HEAD_U = 0.14;
 
 export const owl: Animal<Owl> = {
   key: "owl",
-  label: "hibou",
+  label: "Owl",
   swatch: [255, 176, 103],
   defaults: DEFAULTS,
   controls: [
-    ["Vol", [
-      { key: "wingbeat", label: "Battement", min: 0.3, max: 2.5, step: 0.05, hint: "Vitesse des coups d'ailes." },
-      { key: "glide", label: "Glissade", min: 0, max: 4, step: 0.05, hint: "Fréquence des longues glissades ailes tendues." },
+    ["Flight", [
+      { key: "wingbeat", label: "Wingbeat", min: 0.3, max: 2.5, step: 0.05, hint: "How fast the wings flap." },
+      { key: "glide", label: "Glide", min: 0, max: 4, step: 0.05, hint: "How often it makes long glides with wings spread." },
     ]],
-    ["Regard", [
-      { key: "headTurn", label: "Rotation de la tête", min: 0, max: 2, step: 0.05, hint: "Amplitude du regard vers le dernier clic." },
-      { key: "scare", label: "Piqué", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée du piqué quand on clique près du hibou." },
+    ["Gaze", [
+      { key: "headTurn", label: "Head turn", min: 0, max: 2, step: 0.05, hint: "How far it looks toward the last click." },
+      { key: "scare", label: "Dive", min: 0, max: 3, step: 0.05, hint: "Dive speed and length when you click near the owl." },
     ]],
   ],
   area: 40000,

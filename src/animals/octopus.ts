@@ -80,15 +80,15 @@ const box = new Float32Array(ARMS * 4);
 
 export const octopus: Animal<Octopus> = {
   key: "octopus",
-  label: "poulpe",
+  label: "Squid",
   swatch: [200, 111, 208],
   defaults: DEFAULTS,
   controls: [
-    ["Nage", [
-      { key: "jetRate", label: "Cadence", min: 0.3, max: 3, step: 0.05, hint: "Frequence des contractions du manteau." },
-      { key: "jetPower", label: "Poussee", min: 0.3, max: 3, step: 0.05, hint: "Force de chaque a-coup." },
-      { key: "armLength", label: "Longueur des bras", min: 0.4, max: 1.8, step: 0.05, hint: "Longueur des huit tentacules." },
-      { key: "scare", label: "Fuite", min: 0, max: 3, step: 0.05, hint: "Vitesse de la fuite et taille du nuage d'encre au clic. 0 le rend insensible." },
+    ["Swim", [
+      { key: "jetRate", label: "Pulse rate", min: 0.3, max: 3, step: 0.05, hint: "How often the mantle contracts." },
+      { key: "jetPower", label: "Thrust", min: 0.3, max: 3, step: 0.05, hint: "How strong each jet is." },
+      { key: "armLength", label: "Arm length", min: 0.4, max: 1.8, step: 0.05, hint: "Length of the tentacles." },
+      { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Flee speed and ink cloud size on click. 0 makes it unresponsive." },
     ]],
   ],
   area: 70000,

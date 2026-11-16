@@ -127,15 +127,15 @@ const GLINT: RGB = [255, 252, 246];
 
 export const chameleon: Animal<Chameleon> = {
   key: "chameleon",
-  label: "caméléon",
+  label: "Chameleon",
   swatch: [255, 111, 97],
   defaults: DEFAULTS,
   controls: [
-    ["Caméléon", [
-      { key: "colorSpeed", label: "Changement de couleur", min: 0, max: 4, step: 0.05, hint: "Vitesse à laquelle la peau parcourt le dégradé. 0 fige les couleurs." },
-      { key: "wave", label: "Ondulation", min: 0, max: 2.5, step: 0.05, hint: "À quel point la couleur change de la tête à la queue. 0 donne une peau d'une seule teinte." },
-      { key: "step", label: "Pas", min: 0.2, max: 3, step: 0.05, hint: "Vitesse des pattes et du balancement du corps." },
-      { key: "curl", label: "Spirale", min: 0, max: 2, step: 0.05, hint: "Amplitude avec laquelle la queue s'enroule et se déroule." },
+    ["Chameleon", [
+      { key: "colorSpeed", label: "Color change", min: 0, max: 4, step: 0.05, hint: "How fast the skin cycles through the gradient. 0 freezes the colors." },
+      { key: "wave", label: "Ripple", min: 0, max: 2.5, step: 0.05, hint: "How much the color shifts from head to tail. 0 gives a single-tone skin." },
+      { key: "step", label: "Step", min: 0.2, max: 3, step: 0.05, hint: "How fast the legs and body sway." },
+      { key: "curl", label: "Curl", min: 0, max: 2, step: 0.05, hint: "How far the tail curls and uncurls." },
     ]],
   ],
   area: 62000,

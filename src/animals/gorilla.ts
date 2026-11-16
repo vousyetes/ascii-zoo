@@ -79,15 +79,15 @@ const ease = (a: number, b: number, k: number) => a + (b - a) * Math.min(1, k);
 
 export const gorilla: Animal<Gorilla> = {
   key: "gorilla",
-  label: "gorille",
+  label: "Gorilla",
   swatch: [156, 162, 190],
   defaults: DEFAULTS,
   controls: [
-    ["Gorille", [
-      { key: "walk", label: "Durée de marche", min: 0.2, max: 3, step: 0.05, hint: "Combien de temps il marche avant de s'arrêter." },
-      { key: "rest", label: "Durée des pauses", min: 0, max: 3, step: 0.05, hint: "Longueur des pauses assis ou immobile. 0 : il ne s'arrête jamais." },
-      { key: "stand", label: "Se redresse", min: 0, max: 3, step: 0.05, hint: "À quelle fréquence il se dresse sur ses jambes de lui-même." },
-      { key: "thump", label: "Battements", min: 0.3, max: 3, step: 0.05, hint: "Nombre et vitesse des coups sur le torse après un clic." },
+    ["Gorilla", [
+      { key: "walk", label: "Walk time", min: 0.2, max: 3, step: 0.05, hint: "How long it walks before stopping." },
+      { key: "rest", label: "Rest time", min: 0, max: 3, step: 0.05, hint: "How long it sits or stands still. 0: it never stops." },
+      { key: "stand", label: "Stands up", min: 0, max: 3, step: 0.05, hint: "How often it rears up on its legs by itself." },
+      { key: "thump", label: "Chest beats", min: 0.3, max: 3, step: 0.05, hint: "How many and how fast the chest thumps after a click." },
     ]],
   ],
   area: 85000,

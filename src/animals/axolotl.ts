@@ -83,17 +83,17 @@ function finWidth(u: number) {
 
 export const axolotl: Animal<Axolotl> = {
   key: "axolotl",
-  label: "axolotl",
+  label: "Axolotl",
   swatch: [255, 140, 170],
   defaults: DEFAULTS,
   controls: [
     ["Swim", [
-      { key: "tailBeat", label: "Wave", min: 0.2, max: 3, step: 0.05, hint: "Vitesse et ampleur de l'ondulation du corps et de la queue." },
-      { key: "rest", label: "Rests", min: 0, max: 4, step: 0.05, hint: "Durée des pauses où il flotte. 0 : il ne s'arrête jamais." },
+      { key: "tailBeat", label: "Wave", min: 0.2, max: 3, step: 0.05, hint: "Speed and size of the body and tail ripple." },
+      { key: "rest", label: "Rests", min: 0, max: 4, step: 0.05, hint: "How long it floats still. 0: it never stops." },
     ]],
     ["Gills and fear", [
-      { key: "gills", label: "Gills", min: 0, max: 3, step: 0.05, hint: "Ampleur du frémissement des branchies." },
-      { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Vitesse et durée de la fuite quand on clique près de lui." },
+      { key: "gills", label: "Gills", min: 0, max: 3, step: 0.05, hint: "How much the gills flutter." },
+      { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Flee speed and length when you click near it." },
     ]],
   ],
   area: 40000,

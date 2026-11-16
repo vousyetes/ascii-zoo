@@ -76,15 +76,15 @@ const at = { x: 0, y: 0 };
 
 export const peacock: Animal<Peacock> = {
   key: "peacock",
-  label: "paon",
+  label: "Peacock",
   swatch: [92, 200, 255],
   defaults: DEFAULTS,
   controls: [
-    ["Paon", [
-      { key: "hold", label: "Duree de la roue", min: 1, max: 6, step: 0.1, hint: "Combien de secondes l'eventail reste ouvert apres un clic." },
-      { key: "peckRate", label: "Picorage", min: 0, max: 3, step: 0.05, hint: "A quelle frequence il baisse la tete. 0 : jamais." },
-      { key: "stride", label: "Pas", min: 0.2, max: 2, step: 0.05, hint: "Vitesse du battement des pattes." },
-      { key: "shiver", label: "Fremissement", min: 0, max: 2, step: 0.05, hint: "Force du tremblement des plumes quand la roue est ouverte." },
+    ["Peacock", [
+      { key: "hold", label: "Fan time", min: 1, max: 6, step: 0.1, hint: "How many seconds the fan stays open after a click." },
+      { key: "peckRate", label: "Pecking", min: 0, max: 3, step: 0.05, hint: "How often it lowers its head. 0: never." },
+      { key: "stride", label: "Stride", min: 0.2, max: 2, step: 0.05, hint: "How fast the feet move." },
+      { key: "shiver", label: "Shiver", min: 0, max: 2, step: 0.05, hint: "How strongly the feathers tremble when the fan is open." },
     ]],
   ],
   area: 45000,

@@ -103,7 +103,7 @@ function nouveauPoint(c: Ant, f: Flock<Ant>): Pt {
 
 export const ants: Animal<Ant> = {
   key: "ants",
-  label: "fourmi",
+  label: "Ants",
   swatch: [196, 140, 100],
   defaults: DEFAULTS,
   controls: [],

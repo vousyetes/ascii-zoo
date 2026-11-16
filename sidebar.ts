@@ -17,29 +17,29 @@ export interface SideItem {
   sub: string;
 }
 
-/** Comment chacun se déplace, pour la ligne mono sous son nom. */
+/** How each one moves, for the mono line next to its name. */
 export const MOVES: Record<string, string> = {
-  jellyfish: "flotte",
-  koi: "nage",
-  butterflies: "vole",
-  rhino: "charge",
-  gorilla: "marche",
-  chameleon: "rampe",
-  peacock: "fait la roue",
-  octopus: "nage",
-  snail: "rampe",
-  axolotl: "nage",
-  salamander: "marche",
-  owl: "plane",
-  manta: "plane",
-  hummingbird: "sur place",
-  elephant: "marche",
-  flamingo: "échasse",
-  hippo: "marche",
-  seahorse: "dérive",
-  frogs: "saute",
-  ants: "porte",
-  firefly: "clignote",
+  jellyfish: "floats",
+  koi: "swims",
+  butterflies: "flutters",
+  rhino: "charges",
+  gorilla: "walks",
+  chameleon: "climbs",
+  peacock: "struts",
+  octopus: "jets",
+  snail: "crawls",
+  axolotl: "swims",
+  owl: "glides",
+  manta: "glides",
+  hummingbird: "hovers",
+  elephant: "walks",
+  flamingo: "wades",
+  hippo: "wades",
+  seahorse: "drifts",
+  frogs: "hops",
+  ants: "carry sugar",
+  firefly: "blinks",
+  salamander: "crawls",
 };
 
 export function mountSidebar(
@@ -47,7 +47,6 @@ export function mountSidebar(
   items: SideItem[],
   current: string,
   onPick: (value: string) => void,
-  onCalm?: (calm: boolean) => void,
 ) {
   const list = host.querySelector<HTMLElement>(".side-list")!;
   const opener = host.querySelector<HTMLButtonElement>(".side-open")!;
@@ -121,7 +120,7 @@ export function mountSidebar(
     pointerY = y;
     let best = -1;
     let bestD = 1e9;
-    const spread = 70;
+    const spread = 95;
     buttons.forEach((b, i) => {
       if (y === null) {
         state[i].target = 0;
@@ -157,6 +156,14 @@ export function mountSidebar(
       st.k += st.v * dt;
       if (Math.abs(st.v) > 0.001 || Math.abs(st.target - st.k) > 0.001) moving = true;
       b.style.setProperty("--k", st.k.toFixed(3));
+    });
+    // Le dock respire : chaque icône est poussée par la loupe de celles qui la précèdent, les autres s'écartent.
+    const gap = vertical() ? 26 : 30;
+    let acc = 0;
+    buttons.forEach((b, i) => {
+      const k = Math.max(0, state[i].k);
+      b.style.setProperty("--px", `${(acc + k * 0.5 * gap).toFixed(1)}px`);
+      acc += k * gap;
     });
     if (moving) raf = requestAnimationFrame(tick);
     else if (pointerY === null) showTip();
@@ -247,17 +254,6 @@ export function mountSidebar(
     state.forEach((st) => (st.target = 0));
     if (!raf) raf = requestAnimationFrame(tick);
     showTip();
-  });
-
-  // Bouton du bas : croisé (ils vont dans tous les sens) ou calme (tous le même).
-  const sw = host.querySelector<HTMLButtonElement>(".side-calm");
-  sw?.addEventListener("click", () => {
-    const calm = sw.getAttribute("aria-pressed") !== "true";
-    sw.setAttribute("aria-pressed", String(calm));
-    sw.querySelector(".g")!.textContent = calm ? ">>" : "<>";
-    sw.title = calm ? "Calme : tous dans le même sens. Cliquer pour les faire se croiser." : "Croisé : ils vont dans tous les sens. Cliquer pour tout calmer.";
-    haptic(10);
-    onCalm?.(calm);
   });
 
   select(current, false);

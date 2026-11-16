@@ -103,7 +103,7 @@ const spine = new Float32Array(N * 2);
 
 export const salamander: Animal<Salamander> = {
   key: "salamander",
-  label: "salamandre",
+  label: "Salamander",
   swatch: [246, 198, 52],
   defaults: DEFAULTS,
   controls: [],

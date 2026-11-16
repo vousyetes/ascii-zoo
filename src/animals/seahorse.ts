@@ -87,17 +87,17 @@ const mix = (a: RGB, b: RGB, f: number): RGB => [a[0] + (b[0] - a[0]) * f, a[1] 
 
 export const seahorse: Animal<Seahorse> = {
   key: "seahorse",
-  label: "hippocampe",
+  label: "Seahorse",
   swatch: [200, 111, 208],
   defaults: DEFAULTS,
   controls: [
-    ["Dérive", [
-      { key: "bob", label: "Balancement", min: 0, max: 3, step: 0.05, hint: "Amplitude du balancement et des montées et descentes." },
-      { key: "hookRate", label: "Accroche", min: 0, max: 3, step: 0.05, hint: "Fréquence à laquelle la queue s'accroche à un brin d'algue. 0 : jamais." },
+    ["Drift", [
+      { key: "bob", label: "Bobbing", min: 0, max: 3, step: 0.05, hint: "Size of the bobbing and the ups and downs." },
+      { key: "hookRate", label: "Hooking", min: 0, max: 3, step: 0.05, hint: "How often the tail grabs a strand of seaweed. 0: never." },
     ]],
-    ["Corps", [
-      { key: "finBeat", label: "Nageoire", min: 0.2, max: 3, step: 0.05, hint: "Vitesse de la nageoire dorsale." },
-      { key: "curl", label: "Queue", min: 0, max: 1.5, step: 0.05, hint: "Enroulement de la queue." },
+    ["Body", [
+      { key: "finBeat", label: "Fin", min: 0.2, max: 3, step: 0.05, hint: "Speed of the dorsal fin." },
+      { key: "curl", label: "Tail", min: 0, max: 1.5, step: 0.05, hint: "How much the tail curls." },
     ]],
   ],
   area: 30000,

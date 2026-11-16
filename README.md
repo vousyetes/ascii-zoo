@@ -2,15 +2,15 @@
 
 <p align="center"><img src="docs/hero.jpg" alt="Seahorses, rhinos, elephants, flamingos, axolotls and owls drawn in ASCII on a black grid" width="100%"></p>
 
-<p align="center"><a href="https://animaux-vy.pages.dev/"><b>Voir la démo live</b></a></p>
+<p align="center"><a href="https://animaux-vy.pages.dev/"><b>Live demo</b></a></p>
 
-Des animaux dessinés en ASCII sur un canvas, qui traversent l'écran. Version vousyetes : nuit tech (fond noir, grille, la couleur arrive en lumière), 20 animaux, panneau Tweaks.
+Animals drawn as ASCII on a canvas, crossing the screen. The vousyetes version: night-tech look (black background, fine grid, colour arriving as light), 21 animals, a Tweaks panel, and a folding dock with a magnifier effect.
 
-**Les 14 animaux que j'ai ajoutés :** rhino (clin d'oeil à la gravure de Dürer), gorille, caméléon (sa peau parcourt le dégradé de la marque), paon, poulpe, escargot (coquille en spirale d'or), axolotl, hibou, raie manta, colibri, éléphant, flamant, hippopotame, hippocampe. Chacun réagit au clic à sa façon. **Les 3 d'origine gardés :** méduse, koï, papillon (passé du bleu au cyan).
+**Added on top of the original seven:** rhino (a nod to Dürer's 1515 woodcut), gorilla, chameleon (one colour at a time that keeps changing, living on long branches), peacock, squid, snail (golden-ratio shell), axolotl, owl, manta ray, hummingbird, elephant (sprays water on click), flamingo, hippo, seahorse, plus a salamander (6 patterns, crickets and tongue flicks on click), fireflies (they sync up, nectar on click) and ants (they carry sugar back to the nest). Everyone reacts to a click in their own way. **Kept from the original:** jellyfish, koi, butterfly (shifted from blue to cyan) and frog.
 
-**État honnête :** éléphant, escargot, colibri, flamant, axolotl, poulpe, caméléon, paon, rhino (gris, deux cornes) et hippocampe (beaucoup de variantes) se lisent bien. Gorille et hippopotame sont corrects mais à affiner, la raie manta est parfois coupée par le bord. Les comportements au clic ont été vus pour la plupart, pas tous. `scripts/shot.mjs` capture un animal en 9:16 pour itérer.
+**Honest state:** elephant, snail, hummingbird, flamingo, axolotl, squid, chameleon, peacock, rhino and seahorse read well. Gorilla and hippo are fine but could be better, the manta is sometimes cut by the edge, and not every click behaviour has been checked. `scripts/shot.mjs` captures one animal in 9:16 to iterate on.
 
-**Inspiré du prompt « Terrarium » :** salamandres (corps en chaîne, 6 motifs dont l'axolotl, grillons au clic, coup de langue), lucioles qui se synchronisent (modèle de Kuramoto, nectar au clic), fourmis qui rapportent du sucre au nid. Caméléons sur de grandes branches.
+**Inspired by the "Terrarium" prompt:** salamanders, fireflies and ants, and the idea of feeding them with a click.
 
 ```sh
 npm install && npm run dev
@@ -18,16 +18,16 @@ npm install && npm run dev
 
 <p align="center"><img src="docs/desktop.jpg" alt="Desktop view" width="100%"></p>
 
-## Crédits et licence
+## Credits and license
 
-- Moteur et 7 animaux d'origine : [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) de Stephen Zhang et drewdi (MIT).
-- Le moteur d'ascii-animals est lui-même construit sur [ascii-sharks](https://github.com/stackedlol/ascii-sharks) de stackedlol (MIT).
-- Cette version : MIT aussi. Les notices de copyright d'origine sont conservées dans `LICENSE`.
-- Changements vousyetes : charte, 12 nouveaux animaux, interface. Le composeur de chat façon Dia et son logo ont été retirés.
+- Engine and the original seven animals: [ascii-animals](https://github.com/DesignerStephen1/ascii-animals) by Stephen Zhang and drewdi (MIT).
+- ascii-animals is itself built on [ascii-sharks](https://github.com/stackedlol/ascii-sharks) by stackedlol (MIT).
+- This version is MIT too. The original copyright notices are kept in `LICENSE`.
+- Changes by vousyetes: the look, 14 new animals, the interface. The Dia-style chat box and its logo were removed.
 
 ---
 
-# README d'origine (ascii-animals)
+# Original README (ascii-animals)
 
 # ascii animals
 

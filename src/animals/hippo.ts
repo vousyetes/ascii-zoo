@@ -62,15 +62,15 @@ const LEGS = [
 
 export const hippo: Animal<Hippo> = {
   key: "hippo",
-  label: "hippo",
+  label: "Hippo",
   swatch: [140, 146, 162],
   defaults: DEFAULTS,
   controls: [
     ["Hippo", [
-      { key: "walk", label: "Marche", min: 0.2, max: 4, step: 0.05, hint: "Durée de chaque marche." },
-      { key: "rest", label: "Pause", min: 0, max: 4, step: 0.05, hint: "Durée des pauses. 0 : il ne s'arrête jamais." },
-      { key: "yawn", label: "Bâillements", min: 0, max: 3, step: 0.05, hint: "Fréquence des bâillements pendant les pauses." },
-      { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
+      { key: "walk", label: "Walk", min: 0.2, max: 4, step: 0.05, hint: "How long each walk lasts." },
+      { key: "rest", label: "Rest", min: 0, max: 4, step: 0.05, hint: "How long the pauses last. 0: it never stops." },
+      { key: "yawn", label: "Yawns", min: 0, max: 3, step: 0.05, hint: "How often it yawns during pauses." },
+      { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "How hard it charges when you click near it." },
     ]],
   ],
   area: 55000,

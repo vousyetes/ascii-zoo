@@ -10,10 +10,10 @@ const BASE: string = (import.meta as any).env?.BASE_URL ?? "/";
  */
 const STORE = "ascii-animals:";
 
-/** vousyetes garde trois animaux : lisibles en 9:16, et leurs couleurs sont celles de la charte. */
+/** The animals shown in the dock, in order. */
 const KEPT: AnimalKey[] = ["jellyfish", "koi", "butterflies", "rhino", "gorilla", "chameleon", "peacock", "octopus", "snail", "axolotl", "salamander", "owl", "manta", "hummingbird", "elephant", "flamingo", "hippo", "seahorse", "ants", "firefly", "frogs"];
 
-const FR: Partial<Record<AnimalKey, string>> = { jellyfish: "méduse", koi: "koï", butterflies: "papillon", rhino: "rhino", gorilla: "gorille", chameleon: "caméléon", peacock: "paon", octopus: "poulpe", snail: "escargot", axolotl: "axolotl", salamander: "salamandre", owl: "hibou", manta: "raie manta", hummingbird: "colibri", elephant: "éléphant", flamingo: "flamant", hippo: "hippopotame", seahorse: "hippocampe", ants: "fourmi", frogs: "grenouille", firefly: "luciole" };
+const EN: Partial<Record<AnimalKey, string>> = { jellyfish: "jellyfish", koi: "koi", butterflies: "butterfly", rhino: "rhino", gorilla: "gorilla", chameleon: "chameleon", peacock: "peacock", octopus: "squid", snail: "snail", axolotl: "axolotl", salamander: "salamander", owl: "owl", manta: "manta ray", hummingbird: "hummingbird", elephant: "elephant", flamingo: "flamingo", hippo: "hippo", seahorse: "seahorse", ants: "ants", firefly: "firefly", frogs: "frog" };
 
 const params = new URLSearchParams(location.search);
 
@@ -86,7 +86,7 @@ window.addEventListener("storage", (e) => {
 
 mountSidebar(
   document.querySelector<HTMLElement>(".side")!,
-  KEPT.map((key) => ({ value: key, label: FR[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})`, icon: `${BASE}icons/${key}.png`, sub: MOVES[key] ?? "" })),
+  KEPT.map((key) => ({ value: key, label: EN[key] ?? ANIMALS[key].label, swatch: `rgb(${ANIMALS[key].swatch.join(",")})`, icon: `${BASE}icons/${key}.png`, sub: MOVES[key] ?? "" })),
   animal,
   (value) => {
     animal = value as AnimalKey;
@@ -99,6 +99,5 @@ mountSidebar(
       // Not remembered across visits, that's all.
     }
   },
-  (calm) => engine.set("crossflow", calm ? 0 : 0.5),
 );
 

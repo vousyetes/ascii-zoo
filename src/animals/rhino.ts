@@ -69,15 +69,15 @@ const JOINTS = [-0.2, -0.08, 0.04, 0.16];
 
 export const rhino: Animal<Rhino> = {
   key: "rhino",
-  label: "rhino",
+  label: "Rhino",
   swatch: [178, 186, 200],
   defaults: DEFAULTS,
   controls: [
     ["Rhino", [
-      { key: "walk", label: "Marche", min: 0.2, max: 4, step: 0.05, hint: "Durée de chaque marche." },
-      { key: "rest", label: "Pause", min: 0, max: 4, step: 0.05, hint: "Durée des pauses. 0 : il ne s'arrête jamais." },
-      { key: "stride", label: "Pas", min: 0.3, max: 2.5, step: 0.05, hint: "Vitesse du balancement des pattes." },
-      { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "Force de la charge quand on clique près de lui." },
+      { key: "walk", label: "Walk", min: 0.2, max: 4, step: 0.05, hint: "How long each walk lasts." },
+      { key: "rest", label: "Rest", min: 0, max: 4, step: 0.05, hint: "How long the pauses last. 0: it never stops." },
+      { key: "stride", label: "Stride", min: 0.3, max: 2.5, step: 0.05, hint: "How fast the legs swing." },
+      { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "How hard it charges when you click near it." },
     ]],
   ],
   area: 100000,

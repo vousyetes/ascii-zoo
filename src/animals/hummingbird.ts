@@ -53,15 +53,15 @@ const GLINT: RGB = [255, 255, 255];
 
 export const hummingbird: Animal<Hummingbird> = {
   key: "hummingbird",
-  label: "colibri",
+  label: "Hummingbird",
   swatch: [126, 226, 168],
   defaults: DEFAULTS,
   controls: [
-    ["Vol", [
-      { key: "hover", label: "Stationnaire", min: 0.2, max: 3, step: 0.05, hint: "Durée du vol sur place devant la fleur." },
-      { key: "dart", label: "Éclair", min: 0.3, max: 2.5, step: 0.05, hint: "Vitesse de chaque éclair." },
-      { key: "flutter", label: "Battement", min: 0.3, max: 2, step: 0.05, hint: "Vitesse de vibration des ailes." },
-      { key: "scare", label: "Frayeur", min: 0, max: 3, step: 0.05, hint: "Vitesse de fuite quand on clique près d'eux." },
+    ["Flight", [
+      { key: "hover", label: "Hover", min: 0.2, max: 3, step: 0.05, hint: "How long it hovers in front of the flower." },
+      { key: "dart", label: "Dart", min: 0.3, max: 2.5, step: 0.05, hint: "Speed of each dart." },
+      { key: "flutter", label: "Flutter", min: 0.3, max: 2, step: 0.05, hint: "How fast the wings vibrate." },
+      { key: "scare", label: "Fright", min: 0, max: 3, step: 0.05, hint: "Flee speed when you click near them." },
     ]],
   ],
   // Petits et rares : une petite dizaine au plus, fins et lisibles.

@@ -48,7 +48,7 @@ const scale = (c: RGB, k: number): RGB => [c[0] * k, c[1] * k, c[2] * k];
 
 export const firefly: Animal<Firefly> = {
   key: "firefly",
-  label: "luciole",
+  label: "Firefly",
   swatch: [255, 214, 102],
   defaults: DEFAULTS,
   hide: ["shimmer"],

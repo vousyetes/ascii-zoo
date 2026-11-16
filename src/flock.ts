@@ -182,6 +182,10 @@ const STARTLE_RADIUS = 240;
  */
 const REFERENCE_SIZE = 160;
 
+/** vousyetes : tout le monde un peu plus petit, discret en fond, avec un peu plus d'individus pour garder l'effet. */
+const SIZE_K = 0.72;
+const CROWD_K = 1.3;
+
 export class Flock<C extends Creature = Creature> {
   width = 0;
   height = 0;
@@ -204,7 +208,7 @@ export class Flock<C extends Creature = Creature> {
     const first = this.width === 0;
     this.width = width;
     this.height = height;
-    this.base = clamp(Math.min(width, height) * 0.2, 80, 190) * this.animal.scale;
+    this.base = clamp(Math.min(width, height) * 0.2, 80, 190) * this.animal.scale * SIZE_K;
     if (first) this.populate(true);
   }
 
@@ -228,8 +232,8 @@ export class Flock<C extends Creature = Creature> {
    */
   get target() {
     const { width: W, height: H, animal } = this;
-    const shrink = (this.base / animal.scale / REFERENCE_SIZE) ** 2;
-    return this.count ?? clamp(Math.round(((W * H) / (animal.area * shrink)) * this.tuning.density), 1, animal.max ?? 200);
+    const shrink = (this.base / animal.scale / SIZE_K / REFERENCE_SIZE) ** 2;
+    return this.count ?? clamp(Math.round(((W * H) / (animal.area * shrink)) * this.tuning.density * CROWD_K), 1, animal.max ?? 200);
   }
 
   depthOf(roll: number) {

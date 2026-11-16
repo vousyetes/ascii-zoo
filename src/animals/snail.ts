@@ -61,14 +61,14 @@ const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] 
 
 export const snail: Animal<Snail> = {
   key: "snail",
-  label: "escargot",
+  label: "Snail",
   swatch: [255, 176, 103],
   defaults: DEFAULTS,
   controls: [
-    ["Escargot", [
-      { key: "wave", label: "Ondulation", min: 0, max: 2, step: 0.05, hint: "Amplitude des vagues le long du pied." },
-      { key: "hideFor", label: "Temps rentre", min: 0.3, max: 3, step: 0.05, hint: "Duree pendant laquelle il reste dans sa coquille apres un clic." },
-      { key: "slime", label: "Bave", min: 0, max: 3, step: 0.05, hint: "Quantite de bave brillante laissee derriere lui." },
+    ["Snail", [
+      { key: "wave", label: "Ripple", min: 0, max: 2, step: 0.05, hint: "Size of the waves along the foot." },
+      { key: "hideFor", label: "Hidden time", min: 0.3, max: 3, step: 0.05, hint: "How long it stays in its shell after a click." },
+      { key: "slime", label: "Slime", min: 0, max: 3, step: 0.05, hint: "Amount of shiny slime left behind." },
     ]],
   ],
   area: 30000,

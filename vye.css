@@ -76,7 +76,7 @@ body::before {
 .side-list button {
   --k: 0; --d: 0ms; position: relative; display: block; flex: none; width: calc(var(--pitch) * 1.5); height: var(--pitch); padding: 0; border: 0; background: none; cursor: pointer;
   transform-origin: 50% 0%; -webkit-tap-highlight-color: transparent;
-  transform: translate(calc((1 - var(--o, 0)) * -14px), calc(var(--k) * 10px)) scale(calc(1 + var(--k) * 0.85));
+  transform: translate(calc((1 - var(--o, 0)) * -14px + var(--px, 0px)), calc(var(--k) * 12px)) scale(calc(1 + var(--k) * 0.8));
   opacity: var(--o, 0); z-index: calc(1 + var(--k) * 10);
   transition: opacity 0.3s var(--d), translate 0.3s var(--d);
 }
@@ -93,14 +93,6 @@ body::before {
 .side-list button[aria-checked="true"]::before { transform: scale(1); }
 .side-list button[aria-checked="true"] img.ico { opacity: max(0.95, calc(0.45 + var(--k) * 0.55)); }
 .side-list button:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
-
-.side-calm {
-  flex: none; margin-left: 4px; padding: 4px 6px; cursor: pointer; border: 0; background: none; align-self: flex-start; margin-top: 4px;
-  font: 600 11px "JetBrains Mono", monospace; letter-spacing: 0.04em; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity 0.3s 0.25s, color 0.2s;
-}
-.side.open .side-calm { opacity: 0.6; pointer-events: auto; }
-.side.open .side-calm:hover { opacity: 1; color: var(--cyan); }
-.side-calm[aria-pressed="true"] { color: var(--soleil); }
 
 /* Etiquette : numero, nom, facon de se deplacer. Une ligne, sans cadre lourd. */
 .side-tip {
@@ -124,11 +116,10 @@ body::before {
   .side { flex-direction: column; align-items: flex-start; gap: 10px; }
   .side-list { flex-direction: column; max-width: none; max-height: 0; padding: 0; overflow: visible; transition: max-height 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s; }
   .side.open .side-list { max-height: 1000px; }
-  .side-list button { transform-origin: 0% 50%; transform: translate(calc((1 - var(--o, 0)) * -14px), 0) translateX(calc(var(--k) * 12px)) scale(calc(1 + var(--k) * 0.85)); }
+  .side-list button { transform-origin: 0% 50%; transform: translate(calc((1 - var(--o, 0)) * -14px), var(--px, 0px)) translateX(calc(var(--k) * 12px)) scale(calc(1 + var(--k) * 0.8)); }
   .side-list button::before { left: -8px; bottom: auto; top: 50%; margin: -2px 0 0 0; }
   .side-tip.below { translate: -4px -50%; border-top: 0; border-left: 1px solid var(--swatch); }
   .side-tip.below.on { translate: 0 -50%; }
-  .side-calm { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .side-list, .side-list button, .side-tip, .side-open::after, .side-list button::before { transition: none; } }
 

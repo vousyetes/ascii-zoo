@@ -64,15 +64,15 @@ const EYE: RGB = [10, 10, 24];
 
 export const manta: Animal<Manta> = {
   key: "manta",
-  label: "raie manta",
+  label: "Manta ray",
   swatch: [92, 200, 255],
   defaults: DEFAULTS,
   controls: [
-    ["Nage", [
-      { key: "flapRate", label: "Rythme des ailes", min: 0.2, max: 3, step: 0.05, hint: "La vitesse de l'onde qui parcourt les ailes." },
-      { key: "wave", label: "Ampleur du battement", min: 0, max: 2, step: 0.05, hint: "De combien les ailes se relèvent, donc combien de ventre blanc apparaît." },
-      { key: "glide", label: "Glissades", min: 0, max: 3, step: 0.05, hint: "La fréquence des longues glissades sans battre." },
-      { key: "loop", label: "Looping", min: 0, max: 2, step: 0.05, hint: "La durée du looping quand on clique près d'une raie. 0 les rend indifférentes." },
+    ["Swim", [
+      { key: "flapRate", label: "Wing rate", min: 0.2, max: 3, step: 0.05, hint: "Speed of the wave running along the wings." },
+      { key: "wave", label: "Flap size", min: 0, max: 2, step: 0.05, hint: "How far the wings lift, and so how much white belly shows." },
+      { key: "glide", label: "Glides", min: 0, max: 3, step: 0.05, hint: "How often it glides without flapping." },
+      { key: "loop", label: "Loop", min: 0, max: 2, step: 0.05, hint: "How long the loop lasts when you click near a ray. 0 makes them indifferent." },
     ]],
   ],
   area: 80000,
