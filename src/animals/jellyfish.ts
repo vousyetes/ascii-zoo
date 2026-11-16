@@ -27,7 +27,22 @@ export interface Jelly extends Creature {
   squeeze: number;
   /** Smoothed turn rate, so the arms swing out on the outside of a turn. */
   turn: number;
+  /** Éclat de l'onde : 1 à l'allumage, retombe vers 0. */
+  lit: number;
+  /** Dernière réaction en chaîne vécue (une seule fois par chaîne). */
+  chain: number;
 }
+
+/** Une onde bioluminescente : née d'un clic (gen 0) ou d'une méduse allumée (gen > 0). */
+interface Wave { x: number; y: number; t0: number; gen: number; chain: number; reach: number }
+const waves: Wave[] = [];
+let chains = 0;
+/** Taille d'une cellule en px, relevée au dessin. */
+let cellPx = 9;
+const WAVE_TIME = 1.2;
+const MAGENTA: RGB = [255, 130, 214];
+const VIOLET: RGB = [138, 116, 255];
+const FLASH: RGB = [255, 236, 248];
 
 const DEFAULTS = {
   ...SHARED_TUNING,
@@ -44,6 +59,7 @@ const DEFAULTS = {
   pulsePower: 1,
   pulseGlow: 1,
   tentacles: 1,
+  glowWave: 1,
 };
 
 // Magenta: every animal has its own colour, and blue belongs to the butterflies.
@@ -77,13 +93,21 @@ export const jellyfish: Animal<Jelly> = {
       { key: "pulseGlow", label: "Pulse glow", min: 0, max: 3, step: 0.05, hint: "How much the bell lights up on each pulse. 0 turns it off." },
       { key: "tentacles", label: "Arm length", min: 0, max: 2.5, step: 0.05, hint: "Length of the frilly arms and the thin tentacles." },
     ]],
+    ["Click", [
+      { key: "glowWave", label: "Glow wave", min: 0.3, max: 2, step: 0.05, hint: "How far the light travels when you click." },
+    ]],
   ],
   area: 95000,
   scale: 1.6,
   speed: 55,
   trail: { light: [200, 80, 170], dark: [255, 130, 214] },
 
-  create: (c) => ({ ...c, phase: rand(0, TAU), squeeze: 0, turn: 0 }),
+  create: (c) => ({ ...c, phase: rand(0, TAU), squeeze: 0, turn: 0, lit: 0, chain: 0 }),
+
+  tap(x, y, flock) {
+    const k = flock.tuning as typeof DEFAULTS;
+    waves.push({ x, y, t0: flock.time, gen: 0, chain: ++chains, reach: 14 * cellPx * k.glowWave });
+  },
 
   update(j, flock, dt) {
     const k = flock.tuning as typeof DEFAULTS;
@@ -97,6 +121,24 @@ export const jellyfish: Animal<Jelly> = {
     const before = j.heading;
     j.heading += clamp(angleDiff(j.heading, want), -0.6 * k.grip * dt, 0.6 * k.grip * dt);
     j.turn += (angleDiff(before, j.heading) / dt - j.turn) * Math.min(1, dt * 3);
+
+    // Onde : allume la méduse quand l'anneau l'atteint, puis la lumière saute plus loin.
+    j.lit *= Math.exp(-dt * 2.2);
+    for (const w of waves) {
+      if (j.chain === w.chain) continue;
+      const d = Math.hypot(j.x - w.x, j.y - w.y);
+      if (d > w.reach || flock.time < w.t0 + (d / w.reach) * WAVE_TIME) continue;
+      j.chain = w.chain;
+      j.lit = 1;
+      // Contraction forte : nage vers le haut, en s'éloignant du clic.
+      j.phase = Math.floor(j.phase / TAU) * TAU + TAU;
+      const m = d || 1;
+      const kick = 200 * j.depth * (w.gen ? 0.8 : 1);
+      j.vx += ((j.x - w.x) / m) * kick * 0.6;
+      j.vy += ((j.y - w.y) / m) * kick * 0.6 - kick * 0.7;
+      j.startledUntil = flock.time + 0.8;
+      if (w.gen < 3) waves.push({ x: j.x, y: j.y, t0: flock.time + 0.1, gen: w.gen + 1, chain: w.chain, reach: w.reach * 0.7 });
+    }
 
     const cruise = flock.cruise(j);
     const acc = flock.begin();
@@ -119,10 +161,31 @@ export const jellyfish: Animal<Jelly> = {
   },
 
   drawAll(flock, pen) {
+    cellPx = pen.cw;
+    for (let i = waves.length - 1; i >= 0; i--) if (flock.time > waves[i].t0 + WAVE_TIME + 0.2) waves.splice(i, 1);
     drawSnow(flock, pen);
+    for (const w of waves) drawWave(w, flock.time, pen);
     for (const j of flock.creatures) drawJelly(j, pen, flock);
   },
 };
+
+/** Anneau de lumière magenta et violet qui s'étend et s'efface. */
+function drawWave(w: Wave, time: number, pen: Pen) {
+  const f = (time - w.t0) / WAVE_TIME;
+  if (f < 0 || f > 1) return;
+  const r = w.reach * (1 - (1 - f) * (1 - f));
+  const fade = Math.min(0.95, 0.12 + 0.83 * f);
+  const n = Math.max(12, Math.round((TAU * r) / (cellPx * 0.8)));
+  const q = hash3(Math.round(w.t0 * 100), w.gen, 9) * TAU;
+  for (let i = 0; i < n; i++) {
+    const a = q + (i / n) * TAU;
+    const x = w.x + Math.cos(a) * r;
+    const y = w.y + Math.sin(a) * r;
+    const col = mix(MAGENTA, VIOLET, 0.5 + 0.5 * Math.sin(a * 3 + f * 8));
+    if (i % 3) pen.dot(x, y, i % 2 ? "o" : "*", col, 1, fade);
+    else pen.spot(x, y, "+", col, [col[0] * 0.25, col[1] * 0.25, col[2] * 0.25], 1);
+  }
+}
 
 /** The glow's surge on each pulse: quick to light as the bell snaps shut, then easing out. */
 function pulseGlow(j: Jelly) {
@@ -142,7 +205,16 @@ function drawJelly(j: Jelly, pen: Pen, flock: Flock<Jelly>) {
   const b = 0.3 * (1 - 0.2 * sq);
   const u0 = -0.04;
   const sway = clamp(-j.turn * 0.5, -0.5, 0.5);
-  const flash = pulseGlow(j) * k.pulseGlow;
+  const flash = pulseGlow(j) * k.pulseGlow + j.lit * 2;
+  // Étincelles : une traînée de points roses qui s'éteignent.
+  if (j.lit > 0.05) {
+    pen.shed(j.x, j.y, 0.05 * j.lit * j.depth);
+    for (let n = 0; n < 6; n++) {
+      const sp = hash3(j.id, n, Math.floor(t * 12));
+      pen.toWorld(pose, -0.1 - sp * 0.9, (hash3(j.id, n, 3) - 0.5) * 0.5, at);
+      pen.dot(at.x, at.y, "·", FRILL, j.depth, Math.min(0.95, base + 0.9 * (1 - j.lit) * 0.6 + sp * 0.2));
+    }
+  }
 
   // Hair-thin tentacles: faint threads, roots toward the middle of the rim.
   for (let n = 0; n < 8; n++) {
@@ -220,7 +292,7 @@ function drawJelly(j: Jelly, pen: Pen, flock: Flock<Jelly>) {
     if (r > 0.35 && frac((th / Math.PI) * 6) < 0.1) return ink(out, ...RIM, INK_LIT, "|");
     // Glow: brightest at the crown and toward the rim, a little dimmer in the middle.
     const glow = 0.75 + 0.25 * Math.max(clamp(du, 0, 1), r * r);
-    const c = mix(BODY, CROWN, clamp(du, 0, 1) * 0.8);
+    const c = mix(mix(BODY, CROWN, clamp(du, 0, 1) * 0.8), FLASH, clamp(j.lit, 0, 1) * 0.85);
     return ink(out, c[0] * glow, c[1] * glow, c[2] * glow, INK_LIT, " .");
   }, { light: (0.92 + 0.18 * sq) * (1 + 0.6 * flash) });
 }

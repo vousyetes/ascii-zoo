@@ -5,8 +5,9 @@
  * mâchoire inférieure articulée (la gueule s'ouvre sur des incisives ivoire), naseaux, oeil et
  * oreille ovale sur le dessus du crâne, plis au cou et au flanc, corps tonneau, quatre pattes
  * courtes à quatre doigts, petite queue. Marche lente, pauses où il bâille ; un clic proche le
- * fait bâiller en menaçant puis charger un instant.
+ * fait plonger dans une flaque (seuls yeux, oreilles et naseaux dépassent), puis ressurgir en gerbe.
  */
+import type { Pen } from "../renderer";
 import { SHARED_TUNING, type Animal, type Creature } from "../flock";
 import { INK_DARK, INK_SCALE, INK_SPOT, ink, type RGB } from "../ink";
 import { rand, TAU } from "../math";
@@ -21,10 +22,23 @@ interface Hippo extends Creature {
   gape: number;
   /** Fin du bâillement en cours (0 : pas de bâillement). */
   yawnUntil: number;
-  fleeDir: number;
-  fleeSpeed: number;
-  fleeFrom: number;
+  /** Temps écoulé depuis le clic (plongée), -1 hors plongée. */
+  dive: number;
+  /** Durée cachée sous l'eau pour cette plongée. */
+  hide: number;
 }
+
+// Calendrier de la plongée (secondes depuis le clic).
+const SINK_FROM = 0.25;
+const SINK_TO = 1.5;
+const SPLASH = 1.1;
+const SURFACE = 0.45; // ligne d'eau hors du corps (sous les pieds)
+const WATER_MIN = -0.085; // ne laisse que le dessus du crâne
+const DROPS = 26;
+const WATER_DEEP: RGB = [30, 90, 120];
+const WATER_LIGHT: RGB = [92, 200, 255];
+const BUBBLE: RGB = [170, 225, 255];
+const FOAM: RGB = [240, 250, 255];
 
 const DEFAULTS = {
   ...SHARED_TUNING,
@@ -40,7 +54,7 @@ const DEFAULTS = {
   walk: 1,
   rest: 1,
   yawn: 1,
-  rage: 1,
+  dive: 1,
 };
 
 const BODY: RGB = [150, 152, 172];
@@ -60,6 +74,70 @@ const LEGS = [
   { hu: -0.33, ph: 0, far: true },
 ];
 
+/** Flaque, remous, bulles, jets des naseaux et gerbe de sortie : tout se déduit du temps écoulé. */
+function drawDive(c: Hippo, pen: Pen, dv: number, sortie: number, wl: number) {
+  const S = c.span;
+  const d = c.dir;
+  const cx = c.x + d * 0.1 * S;
+  const wy = c.y + Math.min(wl, SURFACE) * S;
+  const after = dv >= sortie;
+  const grow = after ? 1 - (dv - sortie) / SPLASH : Math.min(1, dv / 0.9);
+  const rx = 0.78 * S * grow;
+  const ry = 0.13 * S * grow;
+  // Flaque : demi-ellipse de cellules sous la ligne d'eau, deux tons en damier.
+  for (let y = wy; y <= wy + ry; y += 18) {
+    for (let x = cx - rx; x <= cx + rx; x += 12) {
+      const a = (x - cx) / rx, b = (y - wy) / ry;
+      if (a * a + b * b > 1) continue;
+      const odd = (Math.round(x / 12) + Math.round(y / 18)) % 2 === 0;
+      pen.spot(x, y, odd ? "~" : "≈", WATER_LIGHT, WATER_DEEP, c.depth);
+    }
+  }
+  // Anneaux de remous qui s'étendent.
+  for (let k = 0; k < 3; k++) {
+    const ph = ((dv * 0.5 + k / 3) % 1);
+    const r = (0.2 + 0.7 * ph) * S * Math.min(1, grow * 1.5);
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      const th = (i / n) * TAU;
+      pen.dot(cx + Math.cos(th) * r, wy + 0.01 * S + Math.abs(Math.sin(th)) * r * 0.16, ph < 0.55 ? "o" : "°", WATER_LIGHT, c.depth);
+    }
+  }
+  if (!after && dv > SINK_TO - 0.3) {
+    // Bulles qui montent des naseaux, jets de gouttes quand il souffle.
+    const nx = c.x + d * 0.68 * S;
+    const ny = c.y - 0.09 * S;
+    for (let i = 0; i < 5; i++) {
+      const ph = (dv * 0.7 + i / 5) % 1;
+      pen.dot(nx + Math.sin(ph * 9 + i * 2) * 0.03 * S - d * 0.05 * S, ny + 0.04 * S - ph * 0.3 * S, "o", BUBBLE, c.depth);
+    }
+    for (let i = 0; i < 6; i++) {
+      const ph = (dv * 1.3 + i * 0.17) % 1;
+      if (ph > 0.55) continue;
+      const side = i % 2 ? 1 : -0.4;
+      pen.dot(nx + d * side * S * 0.35 * ph * (0.5 + (i % 3) * 0.3), ny - S * 0.45 * ph + S * 1.2 * ph * ph, i % 2 ? "·" : "°", i % 3 ? WATER_LIGHT : FOAM, c.depth);
+    }
+  }
+  if (after) {
+    // Gerbe : balistique à partir du temps écoulé depuis la sortie.
+    const ts = dv - sortie;
+    const x0 = cx, y0 = wy;
+    for (let i = 0; i < DROPS; i++) {
+      const h = Math.sin(i * 12.9898) * 43758.5453, r = h - Math.floor(h);
+      const age = ts - r * 0.12;
+      if (age < 0 || age > 0.95) continue;
+      const vx = (r - 0.5) * 2.2 * S * (i % 2 ? 1 : 0.8);
+      const vy = -S * (1.1 + 1.3 * ((i * 0.618) % 1));
+      const x = x0 + (i % 5 - 2) * 0.1 * S + vx * age;
+      const y = y0 + vy * age + 0.5 * S * 3.6 * age * age;
+      if (y > y0 + 0.1 * S) continue;
+      const col = i % 3 === 0 ? FOAM : WATER_LIGHT;
+      if (i % 3 === 0) pen.spot(x, y, "o", col, WATER_DEEP, c.depth);
+      else pen.dot(x, y, i % 2 ? "°" : "·", col, c.depth);
+    }
+  }
+}
+
 export const hippo: Animal<Hippo> = {
   key: "hippo",
   label: "Hippo",
@@ -70,7 +148,7 @@ export const hippo: Animal<Hippo> = {
       { key: "walk", label: "Walk", min: 0.2, max: 4, step: 0.05, hint: "How long each walk lasts." },
       { key: "rest", label: "Rest", min: 0, max: 4, step: 0.05, hint: "How long the pauses last. 0: it never stops." },
       { key: "yawn", label: "Yawns", min: 0, max: 3, step: 0.05, hint: "How often it yawns during pauses." },
-      { key: "rage", label: "Charge", min: 0, max: 3, step: 0.05, hint: "How hard it charges when you click near it." },
+      { key: "dive", label: "Dive", min: 0, max: 3, step: 0.05, hint: "How long they hide underwater after a click. 0: no dive." },
     ]],
   ],
   area: 55000,
@@ -78,7 +156,7 @@ export const hippo: Animal<Hippo> = {
   speed: 34,
   trail: { light: [130, 136, 152], dark: [140, 146, 162] },
 
-  create: (c) => ({ ...c, dir: Math.random() < 0.5 ? 1 : -1, walking: true, until: 0, gait: rand(0, TAU), gape: 0, yawnUntil: 0, fleeDir: 0, fleeSpeed: 0, fleeFrom: 0 }),
+  create: (c) => ({ ...c, dir: Math.random() < 0.5 ? 1 : -1, walking: true, until: 0, gait: rand(0, TAU), gape: 0, yawnUntil: 0, dive: -1, hide: 0 }),
 
   enter(c, flock) {
     c.walking = true;
@@ -95,13 +173,19 @@ export const hippo: Animal<Hippo> = {
       if (!c.walking && Math.random() < Math.min(1, 0.7 * k.yawn)) c.yawnUntil = t + Math.min(2.4, c.until - t);
     }
     const cruise = flock.cruise(c);
-    const charging = t < c.startledUntil;
-    const calm = charging ? (t - c.fleeFrom) / (c.startledUntil - c.fleeFrom) : 1;
+    // Plongée : il ne bouge plus ; le bâillement part à la sortie.
+    if (c.dive >= 0) {
+      const sortie = SINK_TO + c.hide;
+      const avant = c.dive;
+      c.dive += dt;
+      if (avant < sortie && c.dive >= sortie) c.yawnUntil = t + 1.4;
+      if (c.dive > sortie + SPLASH) c.dive = -1;
+    }
+    const diving = c.dive >= 0;
     flock.begin();
-    if (charging) flock.steer(c, c.fleeDir, c.fleeSpeed * (1 - calm * calm), 5);
-    else flock.steer(c, flock.heading + c.bias * k.spread, c.walking ? cruise : 0, k.grip);
+    flock.steer(c, flock.heading + c.bias * k.spread, c.walking && !diving ? cruise : 0, diving ? 6 : k.grip);
     flock.separate(c);
-    const speed = flock.move(c, dt, charging ? Math.max(cruise, c.fleeSpeed) : cruise);
+    const speed = flock.move(c, dt, diving ? 0 : cruise);
     if (flock.passed(c)) flock.reenter(c);
 
     if (speed > 3) {
@@ -111,22 +195,19 @@ export const hippo: Animal<Hippo> = {
     }
     c.heading = Math.atan2(c.vy, c.vx);
     c.gait += (dt * speed) / Math.max(6, c.span * 0.14);
-    // Bâillement : montée lente, plateau, retombée ; menaçant au début de la charge.
-    const yawning = t < c.yawnUntil || (charging && calm < 0.7);
+    // Bâillement : montée lente, plateau, retombée.
+    const yawning = t < c.yawnUntil;
     c.gape += ((yawning ? 1 : 0) - c.gape) * Math.min(1, dt * (yawning ? 4 : 3));
   },
 
-  startle(c, dx, dy, strength, flock) {
+  startle(c, _dx, _dy, _strength, flock) {
     const k = flock.tuning as typeof DEFAULTS;
-    if (k.rage <= 0) return;
-    c.fleeDir = Math.atan2(dy, dx) + rand(-0.15, 0.15);
-    c.fleeSpeed = flock.cruise(c) * (2.5 + 2.5 * strength) * k.rage;
-    c.fleeFrom = flock.time;
-    c.startledUntil = flock.time + (1.4 + 1.4 * strength) * Math.sqrt(k.rage);
-    c.walking = true;
-    c.until = c.startledUntil + rand(1, 3);
-    if (Math.cos(c.fleeDir) > 0.1) c.dir = 1;
-    else if (Math.cos(c.fleeDir) < -0.1) c.dir = -1;
+    if (k.dive <= 0 || c.dive >= 0) return;
+    c.dive = 0;
+    c.hide = rand(1.5, 2) * k.dive;
+    c.walking = false;
+    c.yawnUntil = 0;
+    c.until = flock.time + SINK_TO + c.hide + SPLASH + rand(1, 2);
   },
 
   draw(c, pen) {
@@ -137,6 +218,14 @@ export const hippo: Animal<Hippo> = {
     const pose = { x: c.x, y: c.y, heading: 0, span: S, depth: c.depth, id: c.id };
     const at = { x: 0, y: 0 };
     const bob = 0.006 * Math.sin(c.gait * 2);
+    // Ligne d'eau (repère du corps, v vers le bas) : tout ce qui est dessous n'est pas dessiné.
+    const dv = c.dive;
+    const sortie = SINK_TO + c.hide;
+    let wl = 9;
+    if (dv >= 0 && dv < sortie) {
+      const p = Math.min(1, Math.max(0, (dv - SINK_FROM) / (SINK_TO - SINK_FROM)));
+      wl = SURFACE + (WATER_MIN - SURFACE) * (p * p * (3 - 2 * p));
+    }
     const sway = 0.02 * Math.sin(c.gait);
 
     const foot = LEGS.map((l) => {
@@ -151,6 +240,7 @@ export const hippo: Animal<Hippo> = {
     const EV = -0.13;
 
     pen.shape(pose, 0.7, (u, v) => {
+      if (v > wl) return false;
       const fu = u * d;
       const dr = g * 0.17 * Math.min(1, Math.max(0, (fu - 0.24) / 0.42)); // abaissement de la mandibule
       const jt = MV + dr; // dessus de la mandibule
@@ -216,5 +306,6 @@ export const hippo: Animal<Hippo> = {
     // Petit oeil net sur la bosse du crâne.
     pen.toWorld(pose, d * EU, EV, at);
     pen.spot(at.x, at.y, "o", EYE, EYE_BG, c.depth);
+    if (dv >= 0) drawDive(c, pen, dv, sortie, wl);
   },
 };

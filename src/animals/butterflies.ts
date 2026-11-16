@@ -79,7 +79,17 @@ interface Butterfly extends Creature {
   glideUntil: number;
   flutterX: number;
   flutterY: number;
+  /** Tourbillon : instant du clic (-9 = aucun) et point cliqué. */
+  swirlT: number;
+  swirlX: number;
+  swirlY: number;
 }
+
+/** Pluie de pétales : calculée à la volée depuis l'instant et le point du dernier clic, rien n'est stocké. */
+const PETAL_LIFE = 2.5;
+const SWIRL_LIFE = 1.5;
+const PETALS = 30;
+const petal = { t: -9, x: 0, y: 0, drawn: -1 };
 
 const DEFAULTS = {
   ...SHARED_TUNING,
@@ -98,6 +108,7 @@ const DEFAULTS = {
   flutter: 0,
   glide: 2.75,
   flapRate: 1,
+  swirl: 1,
 };
 
 export const butterflies: Animal<Butterfly> = {
@@ -110,6 +121,7 @@ export const butterflies: Animal<Butterfly> = {
       { key: "flutter", label: "Flutter", min: 0, max: 3, step: 0.05, hint: "How much their path zigzags." },
       { key: "glide", label: "Glide", min: 0, max: 4, step: 0.05, hint: "How often they stop flapping and glide with wings held flat." },
       { key: "flapRate", label: "Flap rate", min: 0.2, max: 3, step: 0.05, hint: "How fast their wings beat." },
+      { key: "swirl", label: "Swirl", min: 0, max: 2, step: 0.05, hint: "How strongly they spiral when you click." },
     ]],
   ],
   area: 48000,
@@ -117,7 +129,7 @@ export const butterflies: Animal<Butterfly> = {
   speed: 90,
   trail: { light: [70, 118, 226], dark: [92, 200, 255] },
 
-  create: (c) => ({ ...c, phase: rand(0, TAU), open: 1, glide: 0, glideUntil: 0, flutterX: 0, flutterY: 0 }),
+  create: (c) => ({ ...c, phase: rand(0, TAU), open: 1, glide: 0, glideUntil: 0, flutterX: 0, flutterY: 0, swirlT: -9, swirlX: 0, swirlY: 0 }),
 
   enter(b) {
     b.flutterX = 0;
@@ -144,6 +156,19 @@ export const butterflies: Animal<Butterfly> = {
     acc.x += Math.cos(b.heading) * down * cruise * 1.4;
     acc.y += Math.sin(b.heading) * down * cruise * 1.4;
 
+    // Tourbillon : orbite de rayon croissant autour du clic, puis on reprend la route.
+    const sp = (t - b.swirlT) / SWIRL_LIFE;
+    if (sp >= 0 && sp < 1 && k.swirl > 0) {
+      const rx = b.x - b.swirlX;
+      const ry = b.y - b.swirlY;
+      const d = Math.hypot(rx, ry) || 1;
+      const env = Math.sin(Math.PI * Math.min(1, sp * 1.1)) * k.swirl;
+      const target = 30 + 150 * sp;
+      acc.x += (-ry / d) * 1400 * env - (rx / d) * (d - target) * 9 * env;
+      acc.y += (rx / d) * 1400 * env - (ry / d) * (d - target) * 9 * env;
+      b.phase += dt * TAU * 6; // ailes qui battent vite
+    }
+
     flock.separate(b);
     const speed = flock.move(b, dt, cruise * 2.2);
     if (flock.passed(b)) flock.reenter(b);
@@ -159,16 +184,44 @@ export const butterflies: Animal<Butterfly> = {
     b.open = 0.1 + 0.9 * (beat * (1 - b.glide) + 0.96 * b.glide);
   },
 
-  startle(b, dx, dy, strength, flock) {
-    const k = strength * 420 * b.depth;
-    b.vx += dx * k;
-    b.vy += dy * k;
-    b.startledUntil = flock.time + rand(0.6, 1.2);
-    b.glideUntil = 0;
+  tap(x, y, flock) {
+    // Gerbe de pétales : un seul état global, dessiné par le premier papillon de chaque image.
+    petal.t = flock.time;
+    petal.x = x;
+    petal.y = y;
+    for (const b of flock.creatures) {
+      if (Math.hypot(b.x - x, b.y - y) > 380) continue;
+      b.swirlT = flock.time;
+      b.swirlX = x;
+      b.swirlY = y;
+      b.startledUntil = flock.time + SWIRL_LIFE;
+      b.glideUntil = 0;
+    }
   },
 
   draw(b, pen) {
     const S = b.span;
+    if (petal.drawn !== pen.t) {
+      petal.drawn = pen.t;
+      const age = pen.t - petal.t;
+      if (age >= 0 && age < PETAL_LIFE) {
+        for (let i = 0; i < PETALS; i++) {
+          // Hasard déterministe par pétale : vitesse, angle, vrille.
+          const h = frac(Math.sin(i * 91.7) * 4375.5);
+          const h2 = frac(Math.sin(i * 12.3 + 5) * 9871.3);
+          const a0 = (i / PETALS) * TAU + h * 2;
+          const v0 = 160 + 340 * h2;
+          const drag = 1 - Math.exp(-2.2 * age);
+          const rot = a0 + age * (2 + 3 * h) * (i % 2 ? 1 : -1);
+          const rr = (v0 / 2.2) * drag;
+          const px = petal.x + Math.cos(rot) * rr * 0.9;
+          const py = petal.y + Math.sin(rot) * rr * 0.9 + 70 * age * age + 20 * age;
+          const f = Math.sqrt(1 - age / PETAL_LIFE);
+          const col: [number, number, number] = i % 2 ? [92, 200, 255] : [200, 111, 208];
+          pen.dot(px, py, ["\u00b7", "*", "'"][i % 3], col.map((v) => v * f) as [number, number, number], 1, 0);
+        }
+      }
+    }
     const open = Math.max(0.08, b.open);
     const ink$ = pen.ink;
     // The body yaws a touch with each beat.
@@ -205,6 +258,8 @@ export const butterflies: Animal<Butterfly> = {
     }
 
     // Downstrokes shed scales from the forewing tips.
+    // Traînée scintillante pendant le tourbillon.
+    if (pen.t - b.swirlT < SWIRL_LIFE) pen.shed(b.x, b.y, 0.5 * b.depth);
     const stroke = Math.max(0, -Math.sin(b.phase)) * (1 - b.glide);
     const phi = FORE.from + (FORE.to - FORE.from) * FORE.peak;
     const tipU = FORE_ROOT + Math.sin(phi) * FORE.reach * 0.95;

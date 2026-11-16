@@ -33,7 +33,34 @@ export interface Frog extends Creature {
   fromY: number;
   toX: number;
   toY: number;
+  /** Coup de langue : temps écoulé (-1 si pas en cours), mouche visée, point visé. */
+  tongue: number;
+  prey: Fly | null;
+  preyX: number;
+  preyY: number;
+  /** Fin du gonflement de gorge après avoir avalé. */
+  gulp: number;
 }
+
+/** Une mouche lâchée au clic : zigzague, jusqu'à être attrapée. */
+interface Fly {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  t0: number;
+  /** Prochain virage du zigzag. */
+  turn: number;
+  caught: boolean;
+  dead: boolean;
+}
+
+// État partagé au niveau du module.
+let flies: Fly[] = [];
+let lastTime = 0;
+const TONGUE: RGB = [255, 112, 150];
+const FLY: RGB = [255, 226, 110];
+const FLY_BODY: RGB = [40, 30, 10];
 
 const DEFAULTS = {
   ...SHARED_TUNING,
@@ -52,6 +79,7 @@ const DEFAULTS = {
   hop: 1,
   leap: 0.45,
   height: 1,
+  flies: 5,
 };
 
 const SKIN: RGB = [104, 184, 76];
@@ -107,6 +135,9 @@ const at = { x: 0, y: 0 };
 const STRAY = 0.35;
 /** Leap lengths to try (× the natural one), so a crowded frog lands clear without turning. */
 const LENGTHS = [1, 0.8, 1.2, 0.65, 1.35];
+/** Durée d'un aller de langue (s) et sa portée (× span). */
+const TONGUE_T = 0.12;
+const TONGUE_REACH = 0.95;
 
 export const frogs: Animal<Frog> = {
   key: "frogs",
@@ -120,13 +151,16 @@ export const frogs: Animal<Frog> = {
       { key: "leap", label: "Leap length", min: 0.3, max: 2.5, step: 0.05, hint: "How far each leap goes." },
       { key: "height", label: "Leap height", min: 0, max: 2.5, step: 0.05, hint: "How high each leap arcs: they draw bigger at the top and the shadow slides further away." },
     ]],
+    ["Flies", [
+      { key: "flies", label: "Flies", min: 2, max: 12, step: 1, hint: "How many flies drop when you click." },
+    ]],
   ],
   area: 75000,
   scale: 0.95,
   speed: 80,
   trail: { light: [80, 150, 170], dark: [110, 200, 220] },
 
-  create: (c) => ({ ...c, leaping: false, until: 0, aim: 0, s: 0, dur: 0.5, fromX: 0, fromY: 0, toX: 0, toY: 0 }),
+  create: (c) => ({ ...c, leaping: false, until: 0, aim: 0, s: 0, dur: 0.5, fromX: 0, fromY: 0, toX: 0, toY: 0, tongue: -1, prey: null, preyX: 0, preyY: 0, gulp: -1 }),
 
   enter(f, flock) {
     f.leaping = false;
@@ -138,12 +172,98 @@ export const frogs: Animal<Frog> = {
     f.until = flock.time + rand(0, 1.5);
   },
 
+  /** Mouches : zigzag nerveux, elles disparaissent après 14 s. */
+  prepare(flock, dt) {
+    if (flock.time < lastTime) flies = [];
+    lastTime = flock.time;
+    for (const m of flies) {
+      if (flock.time - m.t0 > 14) m.dead = true;
+      if (m.caught) continue;
+      if (flock.time >= m.turn) {
+        const a = Math.atan2(m.vy, m.vx) + rand(-1.8, 1.8);
+        const v = rand(70, 130);
+        m.vx = Math.cos(a) * v;
+        m.vy = Math.sin(a) * v;
+        m.turn = flock.time + rand(0.08, 0.25);
+      }
+      m.x = clamp(m.x + m.vx * dt, 12, flock.width - 12);
+      m.y = clamp(m.y + m.vy * dt, 12, flock.height - 12);
+    }
+    flies = flies.filter((m) => !m.dead);
+  },
+
+  /** Clic : on lâche les mouches, les grenouilles proches les attrapent à la langue. */
+  tap(x, y, flock) {
+    const n = Math.round((flock.tuning as typeof DEFAULTS).flies);
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2);
+      const r = 30 * Math.sqrt(Math.random());
+      flies.push({ x: clamp(x + Math.cos(a) * r, 12, flock.width - 12), y: clamp(y + Math.sin(a) * r, 12, flock.height - 12), vx: 0, vy: 0, t0: flock.time, turn: 0, caught: false, dead: false });
+    }
+    if (flies.length > 30) flies.splice(0, flies.length - 30);
+  },
+
   update(f, flock, dt) {
     const k = flock.tuning as typeof DEFAULTS;
     const t = flock.time;
+    if (f.tongue >= 0) {
+      // Langue : part en 0,12 s, revient avec la mouche en 0,12 s.
+      f.tongue += dt;
+      f.vx = 0;
+      f.vy = 0;
+      const m = f.prey;
+      if (m && f.tongue >= TONGUE_T) {
+        const p = Math.max(0, 2 - f.tongue / TONGUE_T);
+        const mx = f.x + Math.cos(f.heading) * f.span * 0.3;
+        const my = f.y + Math.sin(f.heading) * f.span * 0.3;
+        m.x = mx + (f.preyX - mx) * p;
+        m.y = my + (f.preyY - my) * p;
+      }
+      if (f.tongue >= 2 * TONGUE_T) {
+        if (m) m.dead = true;
+        f.tongue = -1;
+        f.prey = null;
+        f.gulp = t + 0.5;
+        f.until = t + rand(0.4, 0.9);
+      }
+      return;
+    }
     if (!f.leaping) {
       f.vx = 0;
       f.vy = 0;
+      // Mouche libre la plus proche ?
+      let best: Fly | null = null;
+      let bd = Infinity;
+      for (const m of flies) {
+        if (m.caught) continue;
+        const d = Math.hypot(m.x - f.x, m.y - f.y);
+        if (d < bd) {
+          bd = d;
+          best = m;
+        }
+      }
+      if (best && bd < 520) {
+        const aim = Math.atan2(best.y - f.y, best.x - f.x);
+        flock.face(f, dt, 6, aim);
+        const reach = f.span * TONGUE_REACH;
+        if (bd <= reach && Math.abs(angleDiff(f.heading, aim)) < 0.35) {
+          f.tongue = 0;
+          f.prey = best;
+          best.caught = true;
+          f.preyX = best.x;
+          f.preyY = best.y;
+          f.heading = aim;
+        } else if (bd > reach && t >= f.until) {
+          // Trop loin : un saut vers elle, qui s'arrête à portée de langue.
+          leap(f, flock, aim, 1, false);
+          const dist = Math.max(f.span * 0.4, Math.min(Math.hypot(f.toX - f.x, f.toY - f.y), bd - reach * 0.7));
+          f.toX = f.x + Math.cos(aim) * dist;
+          f.toY = f.y + Math.sin(aim) * dist;
+          f.vx = (f.toX - f.fromX) / f.dur;
+          f.vy = (f.toY - f.fromY) / f.dur;
+        }
+        return;
+      }
       flock.face(f, dt, 2.5, f.aim);
       if (t >= f.until) leap(f, flock, f.aim, 1);
       return;
@@ -165,14 +285,14 @@ export const frogs: Animal<Frog> = {
     f.y = lerp(f.fromY, f.toY, f.s);
   },
 
-  // A tap scares nearby frogs into leaping away from it, whichever way that is.
-  startle(f, dx, dy, strength, flock) {
-    if (f.leaping) return;
-    leap(f, flock, Math.atan2(dy, dx), 1 + strength, false);
-    f.startledUntil = flock.time + f.dur;
+  drawAll(flock, pen) {
+    for (const f of flock.creatures) drawFrog(f, pen, flock);
+    for (const m of flies) {
+      const z = Math.sin((flock.time - m.t0) * 40 + m.x) * 1.5;
+      pen.dot(m.x + pen.cw * 0.6, m.y + z, "·", FLY, 1);
+      pen.spot(m.x, m.y + z, "*", FLY, FLY_BODY, 1);
+    }
   },
-
-  draw: (f, pen, flock) => drawFrog(f, pen, flock),
 };
 
 /**
@@ -235,8 +355,18 @@ function drawFrog(f: Frog, pen: Pen, flock: Flock<Frog>) {
     ? s < 0.6 ? blend(FRONT_REST, FRONT_AIR, smoothstep(0, 0.2, s)) : blend(FRONT_AIR, FRONT_REACH, smoothstep(0.6, 0.95, s))
     : FRONT_REST;
   // Breathing: the throat swells while sitting. A blink now and then.
-  const breathe = f.leaping ? 1 : 1 + 0.045 * Math.sin(pen.t * 6 + f.id);
+  const gulping = f.gulp > flock.time ? Math.sin((1 - (f.gulp - flock.time) / 0.5) * Math.PI) : 0;
+  const breathe = (f.leaping ? 1 : 1 + 0.045 * Math.sin(pen.t * 6 + f.id)) + 0.3 * gulping;
   const blinking = !f.leaping && frac(pen.t * 0.21 + f.id * 0.37) < 0.035;
+
+  // Langue : ligne rose fine de la bouche vers la mouche, qui revient.
+  if (f.tongue >= 0) {
+    const p = f.tongue < TONGUE_T ? f.tongue / TONGUE_T : Math.max(0, 2 - f.tongue / TONGUE_T);
+    const a = pen.toWorld(pose, 0.3, 0, at);
+    const x0 = a.x;
+    const y0 = a.y;
+    pen.line(x0, y0, x0 + (f.preyX - x0) * p, y0 + (f.preyY - y0) * p, TONGUE, f.depth, "o");
+  }
 
   // Toes: splayed lines off each hand and foot (trailing behind mid-leap).
   for (const side of [-1, 1]) {

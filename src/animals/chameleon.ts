@@ -3,7 +3,8 @@
  * le long du corps (la couleur ondule de la tête à la queue) et un décalage propre
  * à chaque individu. Corps de profil, tête casquée à crête, oeil conique qui balaie,
  * ventre rond, dos arqué, queue en spirale qui respire, pattes à pinces qui avancent
- * une à une en balançant le corps. Au clic : flash blanc éclatant, puis il file une seconde.
+ * une à une en balançant le corps. Au clic : on lâche une mouche, le plus proche la capture
+ * d'un coup de langue balistique et sa peau pulse vers une teinte vive.
  */
 import { SHARED_TUNING, type Animal, type Creature } from "../flock";
 import { INK_DARK, INK_SCALE, INK_SHIMMER, ink, type RGB } from "../ink";
@@ -29,7 +30,18 @@ interface Chameleon extends Creature {
   until: number;
   /** Inclinaison du corps suivant la pente de la branche. */
   tilt: number;
+  /** Teinte vive (index de STOPS) et sa force : 1 à la capture, retombe lentement. */
+  tint: number;
+  pulse: number;
+  /** Petit flash clair à la capture. */
+  pop: number;
+  mx: number;
+  my: number;
 }
+
+// ── mouche lâchée au clic : l'état vit ici, un seul chasseur à la fois ──
+interface Fly { x: number; y: number; sx: number; sy: number; tx: number; ty: number; born: number; phase: number; t0: number; hunter: Chameleon; seed: number }
+let fly: Fly | null = null;
 
 // ── branches : quelques grandes branches qui traversent l'écran, les caméléons marchent dessus ──
 const N_BRANCH = 3;
@@ -85,6 +97,7 @@ const DEFAULTS = {
   wave: 1,
   step: 1,
   curl: 1,
+  tongue: 1,
 };
 
 /** Le dégradé de la marque, bouclé : soleil, corail, rose, violet, cyan, vert ok. */
@@ -115,14 +128,57 @@ function skin(c: Chameleon, time: number, k: typeof DEFAULTS, w: number): RGB {
   const a = STOPS[i % STOPS.length];
   const b = STOPS[(i + 1) % STOPS.length];
   const fl = c.flash * c.flash;
-  for (let j = 0; j < 3; j++) col[j] = (a[j] + (b[j] - a[j]) * s) * (1 - fl) + WHITE * fl;
+  const pu = Math.min(1, c.pulse * 1.6);
+  const pm = pu * pu * (3 - 2 * pu); // lissé : la teinte vive tient puis lâche
+  const T = STOPS[c.tint];
+  const wh = Math.max(fl, c.pop * 0.5);
+  for (let j = 0; j < 3; j++) col[j] = ((a[j] + (b[j] - a[j]) * s) * (1 - pm) + T[j] * pm) * (1 - wh) + WHITE * wh;
   return col;
+}
+
+/** Fait avancer la mouche et la séquence du chasseur ; les autres tournent la tête sans tirer. */
+function hunt(c: Chameleon, flock: { time: number }, dt: number, k: typeof DEFAULTS) {
+  const f = fly!;
+  const t = flock.time;
+  const dir = f.tx > c.x ? 1 : -1;
+  if (c !== f.hunter) {
+    if (Math.abs(f.tx - c.x) < 520) { c.flip = dir; c.moving = false; c.until = t + 0.6; }
+    return;
+  }
+  c.until = t + 5;
+  if (f.phase === 0) {
+    // la mouche vole vers la branche en zigzaguant, le caméléon s'en approche
+    const p = Math.min(1, (t - f.t0) / 0.6);
+    f.x = f.sx + (f.tx - f.sx) * p + 14 * (1 - p) * Math.sin(p * 18 + f.seed);
+    f.y = f.sy + (f.ty - f.sy) * p + 10 * (1 - p) * Math.sin(p * 23 + f.seed * 2);
+    c.flip = dir;
+    const near = Math.abs(f.tx - c.x) < c.span * 0.75;
+    c.moving = !near;
+    if (near && p >= 1) { f.phase = 1; f.t0 = t; }
+  } else {
+    c.moving = false;
+    f.x = f.tx + 1.2 * Math.sin(t * 40 + f.seed);
+    f.y = f.ty + 1.2 * Math.cos(t * 33);
+    const el = t - f.t0;
+    if (f.phase === 1 && el > 0.4) { f.phase = 2; f.t0 = t; }
+    else if (f.phase === 2 && el > 0.1 / k.tongue) { f.phase = 3; f.t0 = t; }
+    else if (f.phase === 3 && el > 0.2 / k.tongue) {
+      // capture : la mouche disparaît, la peau pulse vers une nouvelle teinte vive
+      c.tint = (c.tint + 1 + Math.floor(Math.random() * (STOPS.length - 1))) % STOPS.length;
+      c.pulse = 1;
+      c.pop = 1;
+      c.until = t + 1;
+      fly = null;
+    }
+  }
 }
 
 const TAIL_N = 24;
 const tx = new Float32Array(TAIL_N + 1);
 const ty = new Float32Array(TAIL_N + 1);
 const DARK: RGB = [20, 14, 30];
+const TONGUE: RGB = [255, 112, 150];
+const FLY: RGB = [110, 170, 90];
 const GLINT: RGB = [255, 252, 246];
 
 export const chameleon: Animal<Chameleon> = {
@@ -136,6 +192,7 @@ export const chameleon: Animal<Chameleon> = {
       { key: "wave", label: "Ripple", min: 0, max: 2.5, step: 0.05, hint: "How much the color shifts from head to tail. 0 gives a single-tone skin." },
       { key: "step", label: "Step", min: 0.2, max: 3, step: 0.05, hint: "How fast the legs and body sway." },
       { key: "curl", label: "Curl", min: 0, max: 2, step: 0.05, hint: "How far the tail curls and uncurls." },
+      { key: "tongue", label: "Tongue", min: 0.3, max: 3, step: 0.05, hint: "How fast the tongue snaps at a fly." },
     ]],
   ],
   area: 62000,
@@ -143,7 +200,7 @@ export const chameleon: Animal<Chameleon> = {
   speed: 42,
   trail: { light: [200, 111, 208], dark: [138, 116, 255] },
 
-  create: (c) => ({ ...c, phase: rand(0, 1), gait: rand(0, TAU), eye: rand(0, TAU), flash: 0, flip: Math.random() < 0.5 ? 1 : -1, br: 0, go: 1, moving: true, until: 0, tilt: 0 }),
+  create: (c) => ({ ...c, phase: rand(0, 1), gait: rand(0, TAU), eye: rand(0, TAU), flash: 0, flip: Math.random() < 0.5 ? 1 : -1, br: 0, go: 1, moving: true, until: 0, tilt: 0, tint: 0, pulse: 0, pop: 0, mx: 0, my: 0 }),
 
   enter(c, flock) {
     // Il apparait quelque part sur sa branche ; la branche dépend de sa profondeur (les lointains en haut).
@@ -161,7 +218,9 @@ export const chameleon: Animal<Chameleon> = {
     }
     const t = flock.time;
     c.br = Math.min(N_BRANCH - 1, Math.floor(c.roll * N_BRANCH));
-    const boost = t < c.startledUntil ? 2.6 : 1;
+    const boost = fly && fly.hunter === c && fly.phase === 0 ? 7 : t < c.startledUntil ? 2.6 : 1; // il fonce vers la mouche
+    if (fly && t - fly.born > 12) fly = null; // garde-fou
+    if (fly) hunt(c, flock, dt, k);
     // Marche, pause, et parfois il fait demi-tour : sur une branche ils se croisent dans les deux sens.
     if (t >= c.until) {
       c.moving = !c.moving;
@@ -186,6 +245,29 @@ export const chameleon: Animal<Chameleon> = {
     c.gait += dt * 0.9 * k.step * boost * (0.25 + 0.75 * c.go);
     c.eye += dt * 1.3;
     c.flash = Math.max(0, c.flash - dt * 0.8);
+    c.pulse = Math.max(0, c.pulse - dt * 0.22);
+    c.pop = Math.max(0, c.pop - dt * 2.5);
+  },
+
+  /** Clic : une mouche se pose sur la branche la plus proche, le caméléon de cette branche la chasse. */
+  tap(x, y, flock) {
+    if (fly) return;
+    let bi = 0, bx = x, by = 1e9, bd = 1e9;
+    branches.forEach((b, i) => {
+      for (let j = 0; j < b.xs.length; j++) {
+        const d = Math.hypot(b.xs[j] - x, b.ys[j] - y);
+        if (d < bd) { bd = d; bi = i; bx = b.xs[j]; by = b.ys[j]; }
+      }
+    });
+    bx = Math.min(flock.width - 20, Math.max(20, bx));
+    let h: Chameleon | null = null, hd = 1e9;
+    for (const c of flock.creatures as Chameleon[]) {
+      const d = Math.hypot(c.x - bx, c.y - by) + (c.br === bi ? 0 : 400);
+      if (d < hd) { hd = d; h = c; }
+    }
+    if (!h) return;
+    by = branchY(branches[bi], bx) - 0.3 * h.span;
+    fly = { x, y, sx: x, sy: y, tx: bx, ty: by, born: flock.time, phase: 0, t0: flock.time, hunter: h, seed: rand(0, TAU) };
   },
 
   startle(c, _dx, _dy, _strength, flock) {
@@ -198,34 +280,38 @@ export const chameleon: Animal<Chameleon> = {
     const W = flock.width;
     // Branches : bois chaud en cellules pleines (une rangée centrale claire, deux rangées d'ombre), rameaux et feuilles.
     const cw = pen.cw, ch = pen.ch;
-    const bark: RGB = [196, 138, 104];
-    const barkFill: RGB = [96, 62, 52];
-    const bark2: RGB = [150, 100, 80];
-    const bark2Fill: RGB = [62, 40, 40];
+    const bark: RGB = [120, 86, 72];
+    const barkFill: RGB = [40, 28, 28];
+    const bark2: RGB = [70, 50, 48];
+    const bark2Fill: RGB = [26, 18, 20];
+    const LEAF: RGB[] = [[126, 226, 168], [92, 200, 255]];
     const iconMode = typeof document !== "undefined" && document.body.classList.contains("icon-mode");
     for (let bi = 0; bi < (iconMode ? 0 : branches.length); bi++) {
       const b = branches[bi];
-      const rows = bi === 0 ? 1 : 2; // les lointaines sont plus fines
+      const rows = bi === branches.length - 1 ? 2 : 1; // trait fin, deux rangées seulement au premier plan
       for (let x = -cw; x < W + cw; x += cw) {
         const y = branchY(b, x);
-        const wob = ((Math.floor(x / cw) * 7 + bi * 13) % 5) * 0.4;
-        for (let r = 0; r < rows + 1; r++) {
-          const yy = y + (r - rows / 2) * ch * 0.95;
-          const top = r === 0;
-          pen.spot(x, yy, top ? "=" : r === rows ? "~" : "#", top ? bark : bark2, top ? barkFill : bark2Fill, b.depth);
-        }
-        // Rameau + feuilles tous les ~9 cellules.
         const cell = Math.floor(x / cw);
-        if ((cell + bi * 4) % 9 === 0) {
-          const dir = ((cell + bi) % 2 ? 1 : -1);
-          const len = 3 + ((cell * 5 + bi) % 3);
-          for (let j = 1; j <= len; j++) {
-            pen.spot(x + dir * j * cw * 0.7, y - ch * (0.9 + j * 0.8) - wob, j === len ? "*" : "/", j === len ? ([126, 226, 168] as RGB) : bark2, j === len ? ([20, 70, 56] as RGB) : bark2Fill, b.depth);
-          }
+        pen.spot(x, y, "=", bark, barkFill, b.depth);
+        if (rows === 2) pen.spot(x, y + ch * 0.95, "~", bark2, bark2Fill, b.depth);
+        // Noeuds : une cellule qui dépasse de temps en temps.
+        if ((cell * 7 + bi * 13) % 17 === 0) pen.spot(x, y - ch * 0.9, "'", bark, barkFill, b.depth);
+        // Rameau fin d'une cellule de large, rare, avec une petite feuille.
+        if ((cell + bi * 9) % 31 === 0) {
+          const dir = (cell + bi) % 2 ? 1 : -1;
+          const len = 2 + ((cell + bi) % 2);
+          for (let j = 1; j <= len; j++) pen.spot(x + dir * j * cw * 0.6, y - ch * (0.9 * j), j === len ? "." : "/", bark2, bark2Fill, b.depth);
+          pen.spot(x + dir * (len + 1) * cw * 0.6, y - ch * 0.9 * (len + 1), "*", LEAF[(cell + bi) % 2], [20, 40, 36], b.depth);
         }
       }
     }
     for (const c of flock.creatures) chameleon.draw!(c, pen, flock);
+    // Mouche : petite case sombre et halo qui zigzague.
+    if (fly) {
+      const a = flock.time * 9 + fly.seed;
+      for (let i = 0; i < 4; i++) pen.spot(fly.x + Math.cos(a + i * 1.57) * cw * 1.1, fly.y + Math.sin(a * 1.3 + i * 1.57) * ch * 0.9, "·", [200, 215, 190], [10, 14, 10], 1);
+      pen.spot(fly.x, fly.y, "#", FLY, [14, 24, 14], 1);
+    }
     void k;
   },
 
@@ -358,9 +444,24 @@ export const chameleon: Animal<Chameleon> = {
     });
 
     // Oeil conique : un point lumineux qui balaie, indépendant du corps.
-    const ex = 0.275 + 0.012 * Math.sin(c.eye);
-    const ey = -0.055 + 0.008 * Math.cos(c.eye * 0.8);
+    // Si une mouche est là, le point lumineux se décale vers elle.
+    const look = fly ? Math.max(-1, Math.min(1, (fly.y - c.y) / 60)) : 0;
+    const ex = 0.275 + (fly ? 0.02 : 0.012 * Math.sin(c.eye));
+    const ey = -0.055 + (fly ? 0.016 * look : 0.008 * Math.cos(c.eye * 0.8));
     pen.toWorld(pose, ex, ey * f, at);
     pen.spot(at.x, at.y, "·", GLINT, DARK, c.depth);
+
+    // Langue balistique : ligne rose du museau vers la mouche, renflement au bout.
+    if (fly && fly.hunter === c && fly.phase >= 2) {
+      pen.toWorld(pose, 0.4, 0, at);
+      const el = time - fly.t0;
+      const ext = fly.phase === 2 ? Math.min(1, el / (0.1 / k.tongue)) : Math.max(0, 1 - el / (0.2 / k.tongue));
+      const dx = fly.x - at.x, dy = fly.y - at.y;
+      const n = Math.max(2, Math.ceil(Math.hypot(dx, dy) * ext / (pen.cw * 0.5)));
+      for (let i = 0; i <= n; i++) {
+        const s = (i / n) * ext;
+        pen.spot(at.x + dx * s, at.y + dy * s, i === n ? "o" : "-", TONGUE, TONGUE, c.depth);
+      }
+    }
   },
 };

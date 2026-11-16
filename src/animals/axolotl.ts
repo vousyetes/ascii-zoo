@@ -32,7 +32,19 @@ interface Axolotl extends Creature {
   amp: number;
   fleeDir: number;
   fleeFrom: number;
+  /** Temps du clic qui a lancé la pirouette (-99 : aucune). */
+  twirlAt: number;
+  /** Sens de rotation de la pirouette. */
+  twirlDir: number;
 }
+
+/** Durée de la pirouette, puis du flash de régénération, en secondes. */
+const TWIRL = 1.1;
+const FLASH = 0.6;
+const BUBBLE_LIFE = 1.3;
+const BUBBLE_COL: RGB[] = [[255, 140, 170], [255, 111, 97], [255, 255, 255]];
+const BUBBLE_GLYPH = ["o", "°", "·"];
+const REGEN: RGB = [255, 226, 236];
 
 const DEFAULTS = {
   ...SHARED_TUNING,
@@ -54,6 +66,7 @@ const DEFAULTS = {
   gills: 1,
   rest: 1,
   scare: 1,
+  twirl: 1,
 };
 
 const SKIN: RGB = [255, 168, 196];
@@ -94,6 +107,7 @@ export const axolotl: Animal<Axolotl> = {
     ["Gills and fear", [
       { key: "gills", label: "Gills", min: 0, max: 3, step: 0.05, hint: "How much the gills flutter." },
       { key: "scare", label: "Flee", min: 0, max: 3, step: 0.05, hint: "Flee speed and length when you click near it." },
+      { key: "twirl", label: "Twirl", min: 0, max: 3, step: 0.05, hint: "How energetic the spin is when you click." },
     ]],
   ],
   area: 40000,
@@ -112,6 +126,8 @@ export const axolotl: Animal<Axolotl> = {
     amp: 0.03,
     fleeDir: 0,
     fleeFrom: 0,
+    twirlAt: -99,
+    twirlDir: 1,
   }),
 
   enter(c, flock) {
@@ -134,7 +150,8 @@ export const axolotl: Animal<Axolotl> = {
     const cruise = flock.cruise(c);
     const course = flock.heading + c.bias * k.spread + 0.25 * Math.sin(t * 0.4 + c.id * 1.9);
     const want = fleeing ? c.fleeDir : course;
-    const target = fleeing ? cruise * (1 + 3.5 * c.dash * k.scare) : cruise * (c.floating ? 0.06 : 1);
+    const twirling = t - c.twirlAt < TWIRL;
+    const target = fleeing ? cruise * (1 + (twirling ? 1.2 : 3.5) * c.dash * k.scare) : cruise * (c.floating ? 0.06 : 1);
     flock.begin();
     flock.steer(c, c.heading, target, fleeing ? 6 : 1.4);
     flock.separate(c);
@@ -160,15 +177,28 @@ export const axolotl: Animal<Axolotl> = {
     c.floating = false;
     c.until = c.startledUntil + rand(1, 3);
     c.dash = 1;
+    // Pirouette joyeuse : il se disperse doucement le temps du tour.
+    if (k.twirl > 0) {
+      c.twirlAt = flock.time;
+      c.twirlDir = Math.random() < 0.5 ? -1 : 1;
+      c.startledUntil = flock.time + 1.4 + 0.4 * strength;
+    }
   },
 
   draw(c, pen, flock) {
     const k = flock.tuning as typeof DEFAULTS;
     const S = c.span;
     const out = pen.ink;
-    const pose = { x: c.x, y: c.y, heading: c.heading, span: S, depth: c.depth, id: c.id };
+    const tw = flock.time - c.twirlAt;
+    const spinning = tw >= 0 && tw < TWIRL;
+    const p = clamp(tw / TWIRL, 0, 1);
+    // Un tour complet, démarrage et arrivée en douceur.
+    const spin = spinning ? c.twirlDir * TAU * k.twirl ** 0.5 * smoothstep(0, 1, p) : 0;
+    const open = spinning ? Math.sin(p * Math.PI) : 0;
+    const pose = { x: c.x, y: c.y, heading: c.heading + spin, span: S, depth: c.depth, id: c.id };
     const at = { x: 0, y: 0 };
-    const amp = c.amp;
+    // Enroulé en spirale : la vague du corps se creuse pendant le tour.
+    const amp = c.amp + open * 0.07 * Math.min(k.twirl, 1.5);
     /** Décalage latéral de la colonne en u : la vague grandit vers la queue. */
     const off = (u: number) => {
       const g = 0.2 + 0.8 * Math.pow(clamp((0.3 - u) / 0.8, 0, 1), 1.3);
@@ -191,13 +221,14 @@ export const axolotl: Animal<Axolotl> = {
     }
 
     // Branchies : trois paires, derrière la tête. Plus il fuit, plus elles se couchent en arrière.
-    const back = c.dash * 0.9;
-    const fl = k.gills;
+    const back = c.dash * 0.9 * (1 - open);
+    const fl = k.gills * (1 + 1.2 * open);
+    const wide = -0.35 * open;
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
         const ru = 0.19 - i * 0.045;
         const rv = off(ru) + side * (halfWidth(ru) - 0.008);
-        const a = 1.0 + i * 0.28 + back + 0.14 * fl * Math.sin(c.flutter + i * 1.3 + side);
+        const a = 1.0 + wide + i * 0.28 + back + 0.14 * fl * Math.sin(c.flutter + i * 1.3 + side);
         const len = 0.22 - i * 0.02;
         // La tige se courbe en deux segments.
         const mu = ru + Math.cos(a) * len * 0.5;
@@ -218,6 +249,8 @@ export const axolotl: Animal<Axolotl> = {
       }
     }
 
+    const fe = tw - TWIRL;
+    const flash = fe >= 0 && fe < FLASH ? fe / FLASH : 0;
     pen.shape(pose, 0.6, (u, v) => {
       if (u < -0.52 || u > 0.35) return false;
       const vv = v - off(u);
@@ -235,6 +268,11 @@ export const axolotl: Animal<Axolotl> = {
       // Taches de rousseur, plus denses sur le dos.
       const fr = Math.sin(u * 47 + c.id) * Math.cos(vv * 83 + c.id * 2.1);
       if (fr > 0.93 && u < 0.24 && u > -0.4) return ink(out, ...FRECKLE, INK_DARK);
+      // Flash de régénération : une onde rose clair court de la tête à la queue.
+      if (flash > 0) {
+        const wave = clamp(1 - Math.abs((0.35 - u) / 0.85 - flash) * 5, 0, 1);
+        if (wave > 0) return ink(out, ...REGEN, INK_SCALE);
+      }
       // Le ventre est plus clair le long de la ligne médiane.
       return av < w * 0.35 ? ink(out, ...BELLY, INK_SCALE) : ink(out, ...SKIN, INK_SCALE);
     });
@@ -245,6 +283,23 @@ export const axolotl: Animal<Axolotl> = {
       for (const side of [-1, 1]) {
         pen.toWorld(pose, 0.27, off(0.27) + side * 0.07, at);
         pen.spot(at.x, at.y, "●", GLINT, EYE, c.depth);
+      }
+    }
+
+    // Bulles roses et corail : nées le long du chemin, elles montent et s'estompent.
+    if (tw >= 0 && tw < TWIRL + BUBBLE_LIFE) {
+      const vx = Math.cos(c.heading) * S * 0.5, vy = Math.sin(c.heading) * S * 0.5;
+      for (let b = 0; b * 0.05 < Math.min(tw, TWIRL); b++) {
+        const born = b * 0.05, age = tw - born;
+        if (age > BUBBLE_LIFE) continue;
+        const h = Math.sin((b + c.id * 7) * 12.9898) * 43758.5453;
+        const r = h - Math.floor(h);
+        const f = age / BUBBLE_LIFE;
+        const a = (b + c.id) * 2.4 + c.twirlDir * born * 9;
+        const bx = c.x - vx * age * 0.6 + Math.cos(a) * S * 0.1 + (r - 0.5) * S * 0.06 * age * 3;
+        const by = c.y - vy * age * 0.6 + Math.sin(a) * S * 0.1 - S * (0.1 + 0.35 * r) * age;
+        const col = BUBBLE_COL[Math.floor(r * 30) % 3];
+        pen.dot(bx, by, BUBBLE_GLYPH[f < 0.4 ? 0 : f < 0.75 ? 1 : 2], col.map((v) => Math.round(v * (1 - f * 0.7))) as unknown as RGB, c.depth);
       }
     }
 

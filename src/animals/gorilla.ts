@@ -5,8 +5,8 @@
  * s'arrête : longues pauses assis (le torse monte et descend), parfois debout
  * immobile. Un clic proche le dresse sur les jambes et il se frappe le torse
  * (deux ou trois séries de battements, les bras montent et descendent), puis
- * il repart. Dessiné en gris-bleu très sombre avec du relief (INK_BODY), un
- * liseré violet sur le dos, cyan sous le ventre, et la selle argentée.
+ * il repart. Dessiné en silhouette : 3 aplats lisses (corps, dos argenté,
+ * membres éloignés), visage presque noir et un seul oeil clair.
  * Toujours dessiné à l'endroit : il regarde à gauche ou à droite selon le
  * parcours, sans s'incliner avec le cap.
  */
@@ -41,7 +41,7 @@ const DEFAULTS = {
   ...SHARED_TUNING,
   detail: 1.6,
   fog: 0.3,
-  density: 1.2,
+  density: 1.5,
   sway: 0.02,
   spread: 0.03,
   farthest: 0.4,
@@ -58,17 +58,13 @@ const DEFAULTS = {
   thump: 1,
 };
 
-// Palette sombre : gris-bleu, avec reflets violet et cyan faibles.
-const BODY: RGB = [40, 44, 62];
-const LIMB: RGB = [58, 63, 88];
-const FAR: RGB = [24, 27, 42];
-const SILVER: RGB = [128, 134, 158];
-const SILVER_LOW: RGB = [96, 102, 126];
-const FACE: RGB = [12, 13, 22];
-const MUZZLE: RGB = [34, 38, 56];
-const VIOLET: RGB = [138, 116, 255];
-const CYAN: RGB = [92, 200, 255];
-const EYE_COLOR: RGB = [220, 240, 255];
+// Palette : un ton de corps, un ton clair pour le dos, un ton sombre pour l'éloigné.
+const BODY: RGB = [58, 64, 88];
+const OUTLINE: RGB = [30, 33, 50];
+const FAR: RGB = [34, 38, 56];
+const SILVER: RGB = [96, 104, 132];
+const FACE: RGB = [14, 15, 24];
+const EYE_COLOR: RGB = [236, 238, 247];
 
 /** Hauteur du sol dans le repère du corps (fraction de span). */
 const G = -0.3;
@@ -90,8 +86,8 @@ export const gorilla: Animal<Gorilla> = {
       { key: "thump", label: "Chest beats", min: 0.3, max: 3, step: 0.05, hint: "How many and how fast the chest thumps after a click." },
     ]],
   ],
-  area: 85000,
-  scale: 1.7,
+  area: 90000,
+  scale: 1.2,
   speed: 38,
   trail: { light: [60, 66, 90], dark: [70, 76, 104] },
 
@@ -196,8 +192,8 @@ export const gorilla: Animal<Gorilla> = {
     const shU = hipU + TORSO * ct;
     const shH = hipH + TORSO * st;
     // Tête basse à quatre pattes, relevée quand il se dresse.
-    const headU = shU + 0.24 - 0.03 * rise;
-    const headH = shH - 0.17 + 0.17 * rise + 0.05 * sit;
+    const headU = shU + 0.2 - 0.03 * rise;
+    const headH = shH - 0.12 + 0.17 * rise + 0.05 * sit;
 
     // Mains : marche, pendantes, ou battant le torse.
     const chestU = hipU + TORSO * 0.55 * ct + st * 0.17;
@@ -236,9 +232,6 @@ export const gorilla: Animal<Gorilla> = {
     const hipPt = { u: hipU + 0.02, h: hipH - 0.02 };
     const shPt = { u: armU, h: armH };
 
-    // Pelage : hachures obliques, plus sombres, qui suivent le corps.
-    const fur = (u: number, h: number) => Math.floor((u * 0.8 - h * 1.0 + 9) / 0.018) % 3 === 0;
-
     // Un membre à deux segments, avec un coude ou un genou décalé.
     const limb = (u: number, h: number, a: { u: number; h: number }, b: { u: number; h: number }, bu: number, bh: number, r: number) => {
       const mu = (a.u + b.u) / 2 + bu;
@@ -247,59 +240,45 @@ export const gorilla: Animal<Gorilla> = {
       const q2 = toSegment(u, h, mu, mh, b.u, b.h) / (r * (0.9 + 0.2 * seg.t));
       return Math.min(q1, q2);
     };
-    // Membre proche : clair au centre, contour sombre pour le separer du torse.
-    const nearLimb = (q: number, u: number, h: number) => (q < 0.8 ? (fur(u, h) ? ink(out, ...FAR, INK_DARK) : ink(out, ...LIMB, INK_BODY)) : q < 1 && ink(out, ...FACE, INK_DARK));
+    // Membre proche : aplat de corps, fin contour sombre pour le séparer du torse.
+    const nearLimb = (q: number) => (q < 0.82 ? ink(out, ...BODY, INK_BODY) : q < 1 && ink(out, ...OUTLINE, INK_DARK));
 
     pen.shape(pose, 0.8, (u, v) => {
       const h = -v * f;
 
-      // Bras proche : devant tout.
-      if (nearLimb(limb(u, h, shPt, handNear, -0.06, 0.02, 0.065), u, h)) return true;
-      if (inEllipse(u, h, handNear.u + 0.01, handNear.h - 0.01, 0.08, 0.06)) return Math.floor((u - handNear.u + 0.08) / 0.03) % 2 === 0 ? ink(out, ...FACE, INK_DARK) : ink(out, ...MUZZLE, INK_BODY);
+      // Bras proche : long et épais, devant tout, main ronde au bout.
+      if (nearLimb(limb(u, h, shPt, handNear, -0.05, 0.02, 0.065))) return true;
+      if (inEllipse(u, h, handNear.u + 0.01, handNear.h, 0.075, 0.05)) return ink(out, ...BODY, INK_BODY);
 
-      // Tête : crâne, crête sagittale, front marqué, museau plat.
+      // Tête : petite, basse, front bombé, museau court et plat.
       const hx = u - headU;
       const hy = h - headH;
-      if (inEllipse(hx, hy, 0, 0, 0.09, 0.08)) {
-        if (hx > 0.04 && Math.abs(hy + 0.055) < 0.008) return ink(out, ...VIOLET, INK_DARK); // arcade sourcilière
-        if (hx > 0.1 && Math.abs(hy + 0.035) < 0.007) return ink(out, ...FACE, INK_DARK); // narines
-        if (hx > 0.05 && Math.abs(hy + 0.075) < 0.005) return ink(out, ...FACE, INK_DARK); // bouche
-        if (inEllipse(hx, hy, 0.085, -0.03, 0.055, 0.05)) return ink(out, ...MUZZLE, INK_BODY);
-        if (hy > 0.03 && hx > 0.0 && hx < 0.09 && hy < 0.055 + 0.03 * (hx / 0.09)) return ink(out, ...FACE, INK_DARK);
-        return ink(out, ...FACE, INK_BODY);
-      }
-      // Crête sagittale en arrière du crâne.
-      if (inEllipse(hx, hy, -0.03, 0.085, 0.075, 0.06)) return ink(out, ...BODY, INK_BODY);
+      if (inEllipse(hx, hy, 0, 0, 0.085, 0.075) || inEllipse(hx, hy, 0.07, -0.025, 0.06, 0.045)) return ink(out, ...FACE, INK_DARK);
+      if (inEllipse(hx, hy, -0.02, 0.05, 0.07, 0.055)) return ink(out, ...FACE, INK_DARK); // front bombé
 
-      // Jambe proche.
-      if (nearLimb(limb(u, h, hipPt, footNear, 0.07, 0.03, 0.075), u, h)) return true;
-      if (inEllipse(u, h, footNear.u + 0.03, footNear.h, 0.09, 0.04)) return ink(out, ...FACE, INK_DARK);
+      // Jambe proche, courte et trapue.
+      if (nearLimb(limb(u, h, hipPt, footNear, 0.05, 0.02, 0.075))) return true;
+      if (inEllipse(u, h, footNear.u + 0.03, footNear.h, 0.085, 0.04)) return ink(out, ...BODY, INK_BODY);
 
-      // Torse : capsule hanches-épaules, plus large aux épaules, qui respire.
+      // Torse : capsule hanches-épaules avec grosse bosse d'épaules, qui respire.
       const d = toSegment(u, h, hipU, hipH, shU, shH);
       const along = seg.t;
-      const rad = (0.09 + 0.07 * sstep(along)) * br;
+      const rad = (0.08 + 0.07 * sstep(along)) * br;
       const sx = u - (shU - 0.02);
       const sy = h - (shH + 0.06);
-      const hump = Math.hypot(sx, sy) < 0.17 * br;
+      const hump = Math.hypot(sx, sy) < 0.18 * br;
       if (d < rad || hump) {
-        // Côté du dos (au-dessus de l'axe) ou du ventre.
+        // Dos argenté : moitié haute du torse, un seul aplat clair.
         const side = (u - hipU) * -st + (h - hipH) * ct;
-        const back = side > 0;
-        const q = hump ? Math.hypot(sx, sy) / (0.17 * br) : d / rad;
-        if (back && along > 0.05 && along < 0.9 && side > 0.0 && q < 0.9) {
-          // Dos argenté : plus clair vers le milieu, plus bas en croupe.
-          return fur(u, h) ? ink(out, ...SILVER_LOW, INK_DARK) : ink(out, ...(along < 0.4 ? SILVER_LOW : SILVER), INK_BODY);
-        }
-        if (q > 0.8) return ink(out, ...(back ? VIOLET : CYAN), INK_BODY);
-        return fur(u, h) ? ink(out, ...FAR, INK_DARK) : ink(out, ...BODY, INK_BODY);
+        if (side > 0.02 && along > 0.1) return ink(out, ...SILVER, INK_BODY);
+        return ink(out, ...BODY, INK_BODY);
       }
 
-      // Bras éloigné et jambe éloignée, plus sombres, derrière le torse.
-      if (limb(u, h, shPt, handFar, -0.06, 0.02, 0.06) < 1) return ink(out, ...FAR, INK_BODY);
-      if (inEllipse(u, h, handFar.u + 0.01, handFar.h - 0.01, 0.075, 0.055)) return ink(out, ...FAR, INK_BODY);
-      if (limb(u, h, hipPt, footFar, 0.07, 0.03, 0.06) < 1) return ink(out, ...FAR, INK_BODY);
-      if (inEllipse(u, h, footFar.u + 0.03, footFar.h, 0.075, 0.032)) return ink(out, ...FAR, INK_BODY);
+      // Bras et jambe éloignés : un seul aplat sombre derrière le torse.
+      if (limb(u, h, shPt, handFar, -0.05, 0.02, 0.065) < 1) return ink(out, ...FAR, INK_BODY);
+      if (inEllipse(u, h, handFar.u + 0.01, handFar.h, 0.07, 0.045)) return ink(out, ...FAR, INK_BODY);
+      if (limb(u, h, hipPt, footFar, 0.05, 0.02, 0.075) < 1) return ink(out, ...FAR, INK_BODY);
+      if (inEllipse(u, h, footFar.u + 0.03, footFar.h, 0.08, 0.035)) return ink(out, ...FAR, INK_BODY);
       return false;
     });
 
